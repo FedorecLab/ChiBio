@@ -193,19 +193,19 @@ sysItems = {
 # devices. This section is therefore critical to operation of the device.
 def runWatchdog():
     # Watchdog timing function which continually runs in a thread.
-    global sysItems;
-    if (sysItems['Watchdog']['ON'] == 1):
+    global sysItems
+    if sysItems['Watchdog']['ON'] == 1:
         # sysItems['Watchdog']['thread']
-        toggleWatchdog();
+        toggleWatchdog()
         time.sleep(0.15)
         sysItems['Watchdog']['thread'] = Thread(target=runWatchdog, args=())
         sysItems['Watchdog']['thread'].setDaemon(True)
-        sysItems['Watchdog']['thread'].start();
+        sysItems['Watchdog']['thread'].start()
 
 
 def toggleWatchdog():
     # Toggle the watchdog
-    global sysItems;
+    global sysItems
     GPIO.output(sysItems['Watchdog']['pin'], GPIO.HIGH)
     time.sleep(0.05)
     GPIO.output(sysItems['Watchdog']['pin'], GPIO.LOW)
@@ -215,7 +215,7 @@ GPIO.setup(sysItems['Watchdog']['pin'], GPIO.OUT)
 print(str(datetime.now()) + ' Starting watchdog')
 sysItems['Watchdog']['thread'] = Thread(target=runWatchdog, args=())
 sysItems['Watchdog']['thread'].setDaemon(True)
-sysItems['Watchdog']['thread'].start();
+sysItems['Watchdog']['thread'].start()
 GPIO.setup('P8_15', GPIO.OUT)  # This output connects to the RESET pin on the I2C Multiplexer.
 GPIO.output('P8_15', GPIO.HIGH)
 GPIO.setup('P8_17', GPIO.OUT)  # This output connects to D input of the D-Latch
@@ -225,8 +225,8 @@ GPIO.output('P8_17', GPIO.HIGH)
 def initialise(M):
     # Function that initialises all parameters / clears stored values for a given device.
     # If you want to record/add values to sysData, recommend adding an initialisation line in here.
-    global sysData;
-    global sysItems;
+    global sysData
+    global sysItems
     global sysDevices
 
     for LED in ['LEDA', 'LEDB', 'LEDC', 'LEDD', 'LEDE', 'LEDF', 'LEDG']:
@@ -280,18 +280,18 @@ def initialise(M):
     sysData[M][FP]['Gain'] = "x10"
 
     for PUMP in ['Pump1', 'Pump2', 'Pump3', 'Pump4']:
-        sysData[M][PUMP]['default'] = 0.0;
+        sysData[M][PUMP]['default'] = 0.0
         sysData[M][PUMP]['target'] = sysData[M][PUMP]['default']
         sysData[M][PUMP]['ON'] = 0
         sysData[M][PUMP]['direction'] = 1.0
         sysDevices[M][PUMP]['threadCount'] = 0
         sysDevices[M][PUMP]['active'] = 0
 
-    sysData[M]['Heat']['default'] = 0;
+    sysData[M]['Heat']['default'] = 0
     sysData[M]['Heat']['target'] = sysData[M]['Heat']['default']
     sysData[M]['Heat']['ON'] = 0
 
-    sysData[M]['Thermostat']['default'] = 37.0;
+    sysData[M]['Thermostat']['default'] = 37.0
     sysData[M]['Thermostat']['target'] = sysData[M]['Thermostat']['default']
     sysData[M]['Thermostat']['ON'] = 0
     sysData[M]['Thermostat']['Integral'] = 0
@@ -313,7 +313,7 @@ def initialise(M):
     sysData[M]['Custom']['param3'] = 0.0
 
     sysData[M]['OD']['current'] = 0.0
-    sysData[M]['OD']['target'] = sysData[M]['OD']['default'];
+    sysData[M]['OD']['target'] = sysData[M]['OD']['default']
     sysData[M]['OD0']['target'] = 65000.0
     sysData[M]['OD0']['raw'] = 65000.0
     sysData[M]['OD']['device'] = 'LASER650'
@@ -399,7 +399,7 @@ def initialise(M):
     # getData=I2CCom(M,which,1,16,0x05,0,0)
 
     scanDevices(M)
-    if (sysData[M]['present'] == 1):
+    if sysData[M]['present'] == 1:
         turnEverythingOff(M)
         print(str(datetime.now()) + " Initialised " + str(M) + ', Device ID: ' + sysData[M]['DeviceID'])
 
@@ -475,7 +475,7 @@ def getSysdata():
 
 @application.route('/changeDevice/<M>', methods=['POST'])
 def changeDevice(M):
-    # Function responsible for changin which device is selected in the UI.
+    # Function responsible for changing which device is selected in the UI.
     global sysData
     global sysItems
     M = str(M)
@@ -485,13 +485,13 @@ def changeDevice(M):
 
         sysItems['UIDevice'] = M
 
-    return ('', 204)
+    return '', 204
 
 
 @application.route('/scanDevices/<which>', methods=['POST'])
 def scanDevices(which):
     # Scans to decide which devices are plugged in/on. Does this by trying to communicate with their internal
-    # thermometers (if this communication failes, software assumes device is not present)
+    # thermometers (if this communication fails, software assumes device is not present)
     global sysData
     which = str(which)
 
@@ -506,7 +506,7 @@ def scanDevices(which):
         I2CCom(which, 'ThermometerInternal', 1, 16, 0x05, 0, 0)
         sysData[which]['DeviceID'] = GetID(which)
 
-    return ('', 204)
+    return '', 204
 
 
 def GetID(M):
@@ -537,12 +537,12 @@ def clearTerminal(M):
     # Deletes everything from the terminal.
     global sysData
     M = str(M)
-    if (M == "0"):
+    if M == "0":
         M = sysItems['UIDevice']
 
     sysData[M]['Terminal']['text'] = ''
     addTerminal(M, 'Terminal Cleared')
-    return ('', 204)
+    return '', 204
 
 
 @application.route("/SetFPMeasurement/<item>/<Excite>/<Base>/<Emit1>/<Emit2>/<Gain>", methods=['POST'])
@@ -558,7 +558,7 @@ def SetFPMeasurement(item, Excite, Base, Emit1, Emit2, Gain):
 
     if sysData[M][FP]['ON'] == 1:
         sysData[M][FP]['ON'] = 0
-        return ('', 204)
+        return '', 204
     else:
         sysData[M][FP]['ON'] = 1
         sysData[M][FP]['LED'] = Excite
@@ -566,7 +566,7 @@ def SetFPMeasurement(item, Excite, Base, Emit1, Emit2, Gain):
         sysData[M][FP]['Emit1Band'] = Emit1
         sysData[M][FP]['Emit2Band'] = Emit2
         sysData[M][FP]['Gain'] = Gain
-        return ('', 204)
+        return '', 204
 
 
 @application.route("/SetOutputTarget/<item>/<M>/<value>", methods=['POST'])
@@ -576,20 +576,20 @@ def SetOutputTarget(M, item, value):
     item = str(item)
     value = float(value)
     M = str(M)
-    if (M == "0"):
+    if M == "0":
         M = sysItems['UIDevice']
     print(str(datetime.now()) + " Set item: " + str(item) + " to value " + str(value) + " on " + str(M))
-    if (value < sysData[M][item]['min']):
+    if value < sysData[M][item]['min']:
         value = sysData[M][item]['min']
-    if (value > sysData[M][item]['max']):
+    if value > sysData[M][item]['max']:
         value = sysData[M][item]['max']
 
     sysData[M][item]['target'] = value
 
-    if (sysData[M][item]['ON'] == 1 and not (item == 'OD' or item == 'Thermostat')):  # Checking to see if our item is already running, in which case
+    if sysData[M][item]['ON'] == 1 and not (item == 'OD' or item == 'Thermostat'):  # Checking to see if our item is already running, in which case
         SetOutputOn(M, item, 0)  # we turn it off and on again to restart at new rate.
         SetOutputOn(M, item, 1)
-    return ('', 204)
+    return '', 204
 
 
 @application.route("/SetOutputOn/<item>/<force>/<M>", methods=['POST'])
@@ -600,30 +600,30 @@ def SetOutputOn(M, item, force):
 
     force = int(force)
     M = str(M)
-    if (M == "0"):
+    if M == "0":
         M = sysItems['UIDevice']
     # The first statements are to force it on or off it the command is called in force mode (force implies it sets it
     # to a given state, regardless of what it is currently in)
-    if (force == 1):
+    if force == 1:
         sysData[M][item]['ON'] = 1
         SetOutput(M, item)
-        return ('', 204)
+        return '', 204
 
-    elif (force == 0):
-        sysData[M][item]['ON'] = 0;
+    elif force == 0:
+        sysData[M][item]['ON'] = 0
         SetOutput(M, item)
-        return ('', 204)
+        return '', 204
 
-        # Elsewise this is doing a flip operation (i.e. changes to opposite state to that which it is currently in)
-    if (sysData[M][item]['ON'] == 0):
+        # Else-wise this is doing a flip operation (i.e. changes to opposite state to that which it is currently in)
+    if sysData[M][item]['ON'] == 0:
         sysData[M][item]['ON'] = 1
         SetOutput(M, item)
-        return ('', 204)
+        return '', 204
 
     else:
-        sysData[M][item]['ON'] = 0;
+        sysData[M][item]['ON'] = 0
         SetOutput(M, item)
-        return ('', 204)
+        return '', 204
 
 
 def SetOutput(M, item):
@@ -634,54 +634,54 @@ def SetOutput(M, item):
     global sysDevices
     M = str(M)
     # We go through each different item and set it going as appropriate.
-    if (item == 'Stir'):
+    if item == 'Stir':
         # Stirring is initiated at a high speed for a couple of seconds to prevent the stir motor from stalling
         # (e.g. if it is started at an initial power of 0.3)
-        if (sysData[M][item]['target'] * float(sysData[M][item]['ON']) > 0):
+        if sysData[M][item]['target'] * float(sysData[M][item]['ON']) > 0:
             setPWM(M, 'PWM', sysItems[item], 1.0 * float(sysData[M][item]['ON']), 0)  # This line is to just get stirring started briefly.
             time.sleep(1.5)
 
-            if (sysData[M][item]['target'] > 0.4 and sysData[M][item]['ON'] == 1):
+            if sysData[M][item]['target'] > 0.4 and sysData[M][item]['ON'] == 1:
                 setPWM(M, 'PWM', sysItems[item], 0.5 * float(sysData[M][item]['ON']), 0)  # This line is to just get stirring started briefly.
                 time.sleep(0.75)
 
-            if (sysData[M][item]['target'] > 0.8 and sysData[M][item]['ON'] == 1):
+            if sysData[M][item]['target'] > 0.8 and sysData[M][item]['ON'] == 1:
                 setPWM(M, 'PWM', sysItems[item], 0.7 * float(sysData[M][item]['ON']), 0)  # This line is to just get stirring started briefly.
                 time.sleep(0.75)
 
         setPWM(M, 'PWM', sysItems[item], sysData[M][item]['target'] * float(sysData[M][item]['ON']), 0)
-    elif (item == 'Heat'):
+    elif item == 'Heat':
         setPWM(M, 'PWM', sysItems[item], sysData[M][item]['target'] * float(sysData[M][item]['ON']), 0)
-    elif (item == 'UV'):
+    elif item == 'UV':
         setPWM(M, 'PWM', sysItems[item], sysData[M][item]['target'] * float(sysData[M][item]['ON']), 0)
-    elif (item == 'Thermostat'):
+    elif item == 'Thermostat':
         sysDevices[M][item]['thread'] = Thread(target=Thermostat, args=(M, item))
         sysDevices[M][item]['thread'].setDaemon(True)
-        sysDevices[M][item]['thread'].start();
+        sysDevices[M][item]['thread'].start()
 
-    elif (item == 'Pump1' or item == 'Pump2' or item == 'Pump3' or item == 'Pump4'):
-        if (sysData[M][item]['target'] == 0):
+    elif item == 'Pump1' or item == 'Pump2' or item == 'Pump3' or item == 'Pump4':
+        if sysData[M][item]['target'] == 0:
             sysData[M][item]['ON'] = 0
         sysDevices[M][item]['thread'] = Thread(target=PumpModulation, args=(M, item))
 
         sysDevices[M][item]['thread'].setDaemon(True)
-        sysDevices[M][item]['thread'].start();
+        sysDevices[M][item]['thread'].start()
 
-    elif (item == 'OD'):
+    elif item == 'OD':
         SetOutputOn(M, 'Pump1', 0)
         SetOutputOn(M, 'Pump2', 0)  # We turn pumps off when we switch OD state
-    elif (item == 'Zigzag'):
+    elif item == 'Zigzag':
         sysData[M]['Zigzag']['target'] = 5.0
         sysData[M]['Zigzag']['SwitchPoint'] = sysData[M]['Experiment']['cycles']
 
-    elif (item == 'LEDA' or item == 'LEDB' or item == 'LEDC' or item == 'LEDD' or item == 'LEDE' or item == 'LEDF' or item == 'LEDG'):
+    elif item == 'LEDA' or item == 'LEDB' or item == 'LEDC' or item == 'LEDD' or item == 'LEDE' or item == 'LEDF' or item == 'LEDG':
         setPWM(M, 'PWM', sysItems[item], sysData[M][item]['target'] * float(sysData[M][item]['ON']), 0)
 
     else:  # This is if we are setting the DAC. All should be in range [0,1]
         register = int(sysItems['DAC'][item], 2)
 
         value = sysData[M][item]['target'] * float(sysData[M][item]['ON'])
-        if (value == 0):
+        if value == 0:
             value = 0
         else:
             value = (value + 0.00) / 1.00
@@ -704,17 +704,17 @@ def PumpModulation(M, item):
     sysDevices[M][item]['threadCount'] = (sysDevices[M][item]['threadCount'] + 1) % 100  # Index of the particular thread running.
     currentThread = sysDevices[M][item]['threadCount']
 
-    while (sysDevices[M][item]['active'] == 1):  # Idea is we will wait here if a previous thread on this pump is already running. Potentially all this 'active' business could be removed from this fuction.
+    while sysDevices[M][item]['active'] == 1:  # Idea is we will wait here if a previous thread on this pump is already running. Potentially all this 'active' business could be removed from this function.
         time.sleep(0.02)
 
-    if (abs(sysData[M][item]['target'] * sysData[M][item]['ON']) != 1 and currentThread == sysDevices[M][item]['threadCount']):  # In all cases we turn things off to begin
+    if abs(sysData[M][item]['target'] * sysData[M][item]['ON']) != 1 and currentThread == sysDevices[M][item]['threadCount']:  # In all cases we turn things off to begin
         sysDevices[M][item]['active'] = 1
         setPWM(M, 'Pumps', sysItems[item]['In1'], 0.0 * float(sysData[M][item]['ON']), 0)
         setPWM(M, 'Pumps', sysItems[item]['In2'], 0.0 * float(sysData[M][item]['ON']), 0)
         setPWM(M, 'Pumps', sysItems[item]['In1'], 0.0 * float(sysData[M][item]['ON']), 0)
         setPWM(M, 'Pumps', sysItems[item]['In2'], 0.0 * float(sysData[M][item]['ON']), 0)
         sysDevices[M][item]['active'] = 0
-    if (sysData[M][item]['ON'] == 0):
+    if sysData[M][item]['ON'] == 0:
         return
 
     Time1 = datetime.now()
@@ -725,15 +725,15 @@ def PumpModulation(M, item):
     # Decided to remove the below section in order to prevent media buildup in the device if you are pumping in very
     # rapidly. This check means that media is removed, then added. Removing this code means these happen simultaneously.
     # if (item=="Pump1" and abs(sysData[M][item]['target'])<0.3): #Ensuring we run Pump1 after Pump2.
-    #    waittime=cycletime*abs(sysData[M]['Pump2']['target']) #We want to wait until the output pump has stopped, otherwise you are very inefficient with your media since it will be pumping out the fresh media fromthe top of the test tube right when it enters.
+    #    waittime=cycletime*abs(sysData[M]['Pump2']['target']) #We want to wait until the output pump has stopped, otherwise you are very inefficient with your media since it will be pumping out the fresh media from the top of the test tube right when it enters.
     #    time.sleep(waittime+1.0)
 
-    if (sysData[M][item]['target'] > 0 and currentThread == sysDevices[M][item]['threadCount']):  # Turning on pumps in forward direction
+    if sysData[M][item]['target'] > 0 and currentThread == sysDevices[M][item]['threadCount']:  # Turning on pumps in forward direction
         sysDevices[M][item]['active'] = 1
         setPWM(M, 'Pumps', sysItems[item]['In1'], 1.0 * float(sysData[M][item]['ON']), 0)
         setPWM(M, 'Pumps', sysItems[item]['In2'], 0.0 * float(sysData[M][item]['ON']), 0)
         sysDevices[M][item]['active'] = 0
-    elif (sysData[M][item]['target'] < 0 and currentThread == sysDevices[M][item]['threadCount']):  # Or backward direction.
+    elif sysData[M][item]['target'] < 0 and currentThread == sysDevices[M][item]['threadCount']:  # Or backward direction.
         sysDevices[M][item]['active'] = 1
         setPWM(M, 'Pumps', sysItems[item]['In1'], 0.0 * float(sysData[M][item]['ON']), 0)
         setPWM(M, 'Pumps', sysItems[item]['In2'], 1.0 * float(sysData[M][item]['ON']), 0)
@@ -741,7 +741,7 @@ def PumpModulation(M, item):
 
     time.sleep(Ontime)
 
-    if (abs(sysData[M][item]['target']) != 1 and currentThread == sysDevices[M][item]['threadCount']):  # Turning off pumps at appropriate time.
+    if abs(sysData[M][item]['target']) != 1 and currentThread == sysDevices[M][item]['threadCount']:  # Turning off pumps at appropriate time.
         sysDevices[M][item]['active'] = 1
         setPWM(M, 'Pumps', sysItems[item]['In1'], 0.0 * float(sysData[M][item]['ON']), 0)
         setPWM(M, 'Pumps', sysItems[item]['In2'], 0.0 * float(sysData[M][item]['ON']), 0)
@@ -753,13 +753,13 @@ def PumpModulation(M, item):
     elapsedTime = Time2 - Time1
     elapsedTimeSeconds = round(elapsedTime.total_seconds(), 2)
     Offtime = cycletime - elapsedTimeSeconds
-    if (Offtime > 0.0):
+    if Offtime > 0.0:
         time.sleep(Offtime)
 
-    if (sysData[M][item]['ON'] == 1 and sysDevices[M][item]['threadCount'] == currentThread):  # If pumps need to keep going, this starts a new pump thread.
+    if sysData[M][item]['ON'] == 1 and sysDevices[M][item]['threadCount'] == currentThread:  # If pumps need to keep going, this starts a new pump thread.
         sysDevices[M][item]['thread'] = Thread(target=PumpModulation, args=(M, item))
         sysDevices[M][item]['thread'].setDaemon(True)
-        sysDevices[M][item]['thread'].start();
+        sysDevices[M][item]['thread'].start()
 
 
 def Thermostat(M, item):
@@ -771,7 +771,7 @@ def Thermostat(M, item):
     sysDevices[M][item]['threadCount'] = (sysDevices[M][item]['threadCount'] + 1) % 100
     currentThread = sysDevices[M][item]['threadCount']
 
-    if (ON == 0):
+    if ON == 0:
         SetOutputOn(M, 'Heat', 0)
         return
 
@@ -784,7 +784,7 @@ def Thermostat(M, item):
     # MPC Controller Component
     MediaTemp = sysData[M]['ThermometerExternal']['current']
     MPC = 0
-    if (MediaTemp > 0.0):
+    if MediaTemp > 0.0:
         Tdiff = CurrentTemp - MediaTemp
         Pumping = sysData[M]['Pump1']['target'] * float(sysData[M]['Pump1']['ON']) * float(sysData[M]['OD']['ON'])
         Gain = 2.5
@@ -794,28 +794,28 @@ def Thermostat(M, item):
     e = TargetTemp - CurrentTemp
     dt = sysData[M]['Thermostat']['cycleTime']
     I = sysData[M]['Thermostat']['Integral']
-    if (abs(e) < 2.0):
+    if abs(e) < 2.0:
         I = I + 0.0005 * dt * e
         P = 0.25 * e
     else:
-        P = 0.5 * e;
+        P = 0.5 * e
 
-    if (abs(TargetTemp - LastTemp) > 2.0):  # This resets integrator if we make a big jump in set point.
+    if abs(TargetTemp - LastTemp) > 2.0:  # This resets integrator if we make a big jump in set point.
         I = 0.0
-    elif (I < 0.0):
+    elif I < 0.0:
         I = 0.0
-    elif (I > 1.0):
+    elif I > 1.0:
         I = 1.0
 
     sysData[M]['Thermostat']['Integral'] = I
 
     U = P + I + MPC
 
-    if (U > 1.0):
+    if U > 1.0:
         U = 1.0
         sysData[M]['Heat']['target'] = U
         sysData[M]['Heat']['ON'] = 1
-    elif (U < 0):
+    elif U < 0:
         U = 0
         sysData[M]['Heat']['target'] = U
         sysData[M]['Heat']['ON'] = 0
@@ -829,10 +829,10 @@ def Thermostat(M, item):
 
     time.sleep(dt)
 
-    if (sysData[M][item]['ON'] == 1 and sysDevices[M][item]['threadCount'] == currentThread):
+    if sysData[M][item]['ON'] == 1 and sysDevices[M][item]['threadCount'] == currentThread:
         sysDevices[M][item]['thread'] = Thread(target=Thermostat, args=(M, item))
         sysDevices[M][item]['thread'].setDaemon(True)
-        sysDevices[M][item]['thread'].start();
+        sysDevices[M][item]['thread'].start()
     else:
         sysData[M]['Heat']['ON'] = 0
         sysData[M]['Heat']['target'] = 0
@@ -844,13 +844,13 @@ def direction(M, item):
     # Flips direction of a pump.
     global sysData
     M = str(M)
-    if (M == "0"):
+    if M == "0":
         M = sysItems['UIDevice']
     sysData[M][item]['target'] = -1.0 * sysData[M][item]['target']
-    if (sysData[M]['OD']['ON'] == 1):
+    if sysData[M]['OD']['ON'] == 1:
         sysData[M][item]['direction'] = -1.0 * sysData[M][item]['direction']
 
-    return ('', 204)
+    return '', 204
 
 
 def AS7341Read(M, Gain, ISteps, reset):
@@ -861,15 +861,15 @@ def AS7341Read(M, Gain, ISteps, reset):
     ISteps = int(ISteps)
     if ISteps > 255:
         ISteps = 255  # 255 steps is approx 0.71 seconds.
-    elif (ISteps < 0):
+    elif ISteps < 0:
         ISteps = 0
     if Gain > 10:
         Gain = 10  # 512x
-    elif (Gain < 0):
+    elif Gain < 0:
         Gain = 0  # 0.5x
 
-    I2CCom(M, 'AS7341', 0, 8, int(0xA9), int(0x04), 0)  # This sets us into BANK mode 0, for accesing registers 0x80+. The 4 means we have WTIMEx16
-    if (reset == 1):
+    I2CCom(M, 'AS7341', 0, 8, int(0xA9), int(0x04), 0)  # This sets us into BANK mode 0, for accessing registers 0x80+. The 4 means we have WTIMEx16
+    if reset == 1:
         I2CCom(M, 'AS7341', 0, 8, int(0x80), int(0x00), 0)  # Turns power down
         time.sleep(0.01)
         I2CCom(M, 'AS7341', 0, 8, int(0x80), int(0x01), 0)  # Turns power on with spectral measurement disabled
@@ -881,10 +881,10 @@ def AS7341Read(M, Gain, ISteps, reset):
     # I2CCom(M,'AS7341',0,100,int(0x00),int(0x00),0) #Forces AS7341SMUX to run since length is 100.
     AS7341SMUX(M, 'AS7341', 0, 0)
 
-    I2CCom(M, 'AS7341', 0, 8, int(0x80), int(0x11), 0)  # Runs SMUX command (i.e. cofigures SMUX with data from ram)
+    I2CCom(M, 'AS7341', 0, 8, int(0x80), int(0x11), 0)  # Runs SMUX command (i.e. configures SMUX with data from ram)
     time.sleep(0.001)
     I2CCom(M, 'AS7341', 0, 8, int(0x81), ISteps, 0)  # Sets number of integration steps of length 2.78ms Max ISteps is 255
-    I2CCom(M, 'AS7341', 0, 8, int(0x83), 0xFF, 0)  # Sets maxinum wait time of 0.7mS (multiplex by 16 due to WLONG)
+    I2CCom(M, 'AS7341', 0, 8, int(0x83), 0xFF, 0)  # Sets maximum wait time of 0.7mS (multiplex by 16 due to WLONG)
     I2CCom(M, 'AS7341', 0, 8, int(0xAA), Gain, 0)  # Sets gain on ADCs. Maximum value of Gain is 10 and can take values from 0 to 10.
     # I2CCom(M,'AS7341',0,8,int(0xA9),int(0x14),0) #This sets us into BANK mode 1, for accessing 0x60 to 0x74. The 4 means we have WTIMEx16
     # I2CCom(M,'AS7341',0,8,int(0x70),int(0x00),0)  #Sets integration mode SPM (normal mode)
@@ -908,7 +908,7 @@ def AS7341Read(M, Gain, ISteps, reset):
 
     I2CCom(M, 'AS7341', 0, 8, int(0x80), int(0x01), 0)  # Stops spectral measurement, leaves power on.
 
-    # Status2=int(I2CCom(M,'AS7341',1,8,0xA3,0x00,0)) #Reads system status at end of spectral measursement.
+    # Status2=int(I2CCom(M,'AS7341',1,8,0xA3,0x00,0)) #Reads system status at end of spectral measurement.
     # print(str(ASTATUS))
     # print(str(Status2))
 
@@ -940,11 +940,11 @@ def AS7341SMUX(M, device, data1, data2):
     for a in Addresses:
         A = sysItems['AS7341'][a]['A']
         B = sysItems['AS7341'][a]['B']
-        if (A != 'U'):
+        if A != 'U':
             As = sysData[M]['AS7341']['channels'][A]
         else:
             As = 0
-        if (B != 'U'):
+        if B != 'U':
             Bs = sysData[M]['AS7341']['channels'][B]
         else:
             Bs = 0
@@ -963,7 +963,7 @@ def GetSpectrum(M, Gain):
     global sysData
     global sysItems
     M = str(M)
-    if (M == "0"):
+    if M == "0":
         M = sysItems['UIDevice']
     out = GetLight(M, ['nm410', 'nm440', 'nm470', 'nm510', 'nm550', 'nm583'], Gain, 255)
     out2 = GetLight(M, ['nm620', 'nm670', 'CLEAR', 'NIR', 'DARK'], Gain, 255)
@@ -978,7 +978,7 @@ def GetSpectrum(M, Gain):
     sysData[M]['AS7341']['spectrum']['CLEAR'] = out2[2]
     sysData[M]['AS7341']['spectrum']['NIR'] = out2[3]
 
-    return ('', 204)
+    return '', 204
 
 
 def GetLight(M, wavelengths, Gain, ISteps):
@@ -989,7 +989,7 @@ def GetLight(M, wavelengths, Gain, ISteps):
                 'ExtGPIO', 'ExtINT', 'FLICKER']
     for channel in channels:
         sysData[M]['AS7341']['channels'][channel] = 0  # First we set all measurement ADC indexes to zero.
-    index = 1;
+    index = 1
     for wavelength in wavelengths:
         if wavelength != "OFF":
             sysData[M]['AS7341']['channels'][wavelength] = index  # Now assign ADCs to each of the channel where needed.
@@ -1047,7 +1047,7 @@ def SetCustom(Program, Status):
         sysData[M][item]['param1'] = 0.0  # Thus parameters get reset each time you restart your program.
         sysData[M][item]['param2'] = 0.0
         sysData[M][item]['param3'] = 0.0
-    return ('', 204)
+    return '', 204
 
 
 def CustomProgram(M):
@@ -1066,7 +1066,7 @@ def CustomProgram(M):
     Params = listin[0]
     addTerminal(M, 'Running Program = ' + str(program) + ' on device ' + str(M))
 
-    if (program == "C1"):  # Optogenetic Integral Control Program
+    if program == "C1":  # Optogenetic Integral Control Program
         integral = 0.0  # Integral in integral controller
         green = 0.0  # Intensity of Green actuation
         red = 0.0  # Intensity of red actuation.
@@ -1092,15 +1092,15 @@ def CustomProgram(M):
 
         GreenThread = Thread(target=CustomLEDCycle, args=(M, 'LEDD', green))
         GreenThread.setDaemon(True)
-        GreenThread.start();
+        GreenThread.start()
         RedThread = Thread(target=CustomLEDCycle, args=(M, 'LEDF', red))
         RedThread.setDaemon(True)
-        RedThread.start();
+        RedThread.start()
         sysData[M]['Custom']['param1'] = green
         sysData[M]['Custom']['param2'] = red
-        addTerminal(M,'Program = ' + str(program) + ' green= ' + str(green) + ' red= ' + str(red) + ' integral= ' + str(integral))
+        addTerminal(M, 'Program = ' + str(program) + ' green= ' + str(green) + ' red= ' + str(red) + ' integral= ' + str(integral))
 
-    elif (program == "C2"):  # UV Integral Control Program
+    elif program == "C2":  # UV Integral Control Program
         integral = 0.0  # Integral in integral controller
         UV = 0.0  # Intensity of Green actuation
         GrowthRate = sysData[M]['GrowthRate']['current']
@@ -1109,7 +1109,7 @@ def CustomProgram(M):
         KP = float(Params[0])  # Past data suggest value of ~0.005
         KI = float(Params[1])  # Past data suggest value of ~2e-5
         integral = sysData[M]['Custom']['param2'] + error * KI
-        if (integral > 0):
+        if integral > 0:
             integral = 0.0
         sysData[M]['Custom']['param2'] = integral
         UV = -1.0 * (KP * error + integral)
@@ -1118,7 +1118,7 @@ def CustomProgram(M):
         SetOutputOn(M, 'UV', 1)
         addTerminal(M, 'Program = ' + str(program) + ' UV= ' + str(UV) + ' integral= ' + str(integral))
 
-    elif (program == "C3"):  # UV Integral Control Program Mk 2
+    elif program == "C3":  # UV Integral Control Program Mk 2
         integral = sysData[M]['Custom']['param2']  # Integral in integral controller
         integral2 = sysData[M]['Custom']['param3']  # Second integral controller
         UV = 0.0  # Intensity of UV
@@ -1129,12 +1129,12 @@ def CustomProgram(M):
         KI = float(Params[1])  # Past data suggest value of ~2e-5
         KI2 = float(Params[2])
         integral = sysData[M]['Custom']['param2'] + error * KI
-        if (integral > 0):
+        if integral > 0:
             integral = 0.0
 
-        if (abs(error) < 0.3):  # This is a second high-gain integrator which only gets cranking along when we are close to the target.
+        if abs(error) < 0.3:  # This is a second high-gain integrator which only gets cranking along when we are close to the target.
             integral2 = sysData[M]['Custom']['param3'] + error * KI2
-        if (integral2 > 0):
+        if integral2 > 0:
             integral2 = 0.0
 
         sysData[M]['Custom']['param2'] = integral
@@ -1146,11 +1146,11 @@ def CustomProgram(M):
         SetOutputTarget(M, 'UV', UV)
         SetOutputOn(M, 'UV', 1)
         addTerminal(M, 'Program = ' + str(program) + ' UV= ' + str(UV) + ' integral= ' + str(integral))
-    elif (program == "C4"):  # UV Integral Control Program Mk 4
+    elif program == "C4":  # UV Integral Control Program Mk 4
         rategain = float(Params[0])
         timept = sysData[M]['Custom']['Status']  # This is the timestep as we follow in minutes
 
-        UV = 0.001 * math.exp(timept * rategain)  # So we just exponentialy increase UV over time!
+        UV = 0.001 * math.exp(timept * rategain)  # So we just exponentially increase UV over time!
         sysData[M]['Custom']['param1'] = UV
         SetOutputTarget(M, 'UV', UV)
         SetOutputOn(M, 'UV', 1)
@@ -1158,7 +1158,7 @@ def CustomProgram(M):
         timept = timept + 1
         sysData[M]['Custom']['Status'] = timept
 
-    elif (program == "C5"):  # UV Dosing program
+    elif program == "C5":  # UV Dosing program
         timept = int(sysData[M]['Custom']['Status'])  # This is the timestep as we follow in minutes
         sysData[M]['Custom']['Status'] = timept + 1  # Increment time as we have entered the loop another time!
 
@@ -1166,24 +1166,24 @@ def CustomProgram(M):
         time.sleep(Pump2Ontime)  # Pause here is to prevent output pumping happening at the same time as stirring.
 
         timelength = 300  # Time between doses in minutes
-        if (timept % timelength == 2):  # So this happens every 5 hours!
+        if timept % timelength == 2:  # So this happens every 5 hours!
             iters = (timept // timelength)
             Dose0 = float(Params[0])
-            Dose = Dose0 * (2.0 ** float(iters))  # UV Dose, in terms of amount of time UV shoudl be left on at 1.0 intensity.
+            Dose = Dose0 * (2.0 ** float(iters))  # UV Dose, in terms of amount of time UV should be left on at 1.0 intensity.
             print(str(datetime.now()) + ' Gave dose ' + str(Dose) + " at iteration " + str(iters) + " on device " + str(M))
 
-            if (Dose < 30.0):
+            if Dose < 30.0:
                 powerlvl = Dose / 30.0
                 SetOutputTarget(M, 'UV', powerlvl)
                 Dose = 30.0
             else:
-                SetOutputTarget(M, 'UV', 1.0)  # Ensure UV is on at aopropriate intensity
+                SetOutputTarget(M, 'UV', 1.0)  # Ensure UV is on at appropriate intensity
 
             SetOutputOn(M, 'UV', 1)  # Activate UV
             time.sleep(Dose)  # Wait for dose to be administered
             SetOutputOn(M, 'UV', 0)  # Deactivate UV
 
-    elif (program == "C6"):  # UV Dosing program 2 - constant value!
+    elif program == "C6":  # UV Dosing program 2 - constant value!
         timept = int(sysData[M]['Custom']['Status'])  # This is the timestep as we follow in minutes
         sysData[M]['Custom']['Status'] = timept + 1  # Increment time as we have entered the loop another time!
 
@@ -1191,21 +1191,21 @@ def CustomProgram(M):
         time.sleep(Pump2Ontime)  # Pause here is to prevent output pumping happening at the same time as stirring.
 
         timelength = 300  # Time between doses in minutes
-        if (timept % timelength == 2):  # So this happens every 5 hours!
+        if timept % timelength == 2:  # So this happens every 5 hours!
             iters = (timept // timelength)
             if iters > 3:
                 iters = 3
 
             Dose0 = float(Params[0])
-            Dose = Dose0 * (2.0 ** float(iters))  # UV Dose, in terms of amount of time UV shoudl be left on at 1.0 intensity.
+            Dose = Dose0 * (2.0 ** float(iters))  # UV Dose, in terms of amount of time UV should be left on at 1.0 intensity.
             print(str(datetime.now()) + ' Gave dose ' + str(Dose) + " at iteration " + str(iters) + " on device " + str(M))
 
-            if (Dose < 30.0):
+            if Dose < 30.0:
                 powerlvl = Dose / 30.0
                 SetOutputTarget(M, 'UV', powerlvl)
                 Dose = 30.0
             else:
-                SetOutputTarget(M, 'UV', 1.0)  # Ensure UV is on at aopropriate intensity
+                SetOutputTarget(M, 'UV', 1.0)  # Ensure UV is on at appropriate intensity
 
             SetOutputOn(M, 'UV', 1)  # Activate UV
             time.sleep(Dose)  # Wait for dose to be administered
@@ -1218,10 +1218,10 @@ def CustomLEDCycle(M, LED, Value):
     # This function cycles LEDs for a fraction of 30 seconds during an experiment.
     global sysData
     M = str(M)
-    if (Value > 1.0):
+    if Value > 1.0:
         Value = 1.0
 
-    if (Value > 0.0):
+    if Value > 0.0:
         SetOutputOn(M, LED, 1)
         time.sleep(Value * 30.0)  # Sleep whatever fraction of 30 seconds we are interested in
         SetOutputOn(M, LED, 0)
@@ -1238,11 +1238,11 @@ def SetLightActuation(Excite):
     if sysData[M][item]['ON'] == 1:
         sysData[M][item]['ON'] = 0
         SetOutputOn(M, sysData[M][item]['Excite'], 0)  # In case the current LED is on we need to make sure it turns off
-        return ('', 204)
+        return '', 204
     else:
         sysData[M][item]['Excite'] = str(Excite)
         sysData[M][item]['ON'] = 1
-        return ('', 204)
+        return '', 204
 
 
 def LightActuation(M, toggle):
@@ -1251,7 +1251,7 @@ def LightActuation(M, toggle):
     M = str(M)
     toggle = int(toggle)
     LEDChoice = sysData[M]['Light']['Excite']
-    if (toggle == 1 and sysData[M]['Light']['ON'] == 1):
+    if toggle == 1 and sysData[M]['Light']['ON'] == 1:
         SetOutputOn(M, LEDChoice, 1)
     else:
         SetOutputOn(M, LEDChoice, 0)
@@ -1260,14 +1260,14 @@ def LightActuation(M, toggle):
 
 @application.route("/CharacteriseDevice/<M>/<Program>", methods=['POST'])
 def CharacteriseDevice(M, Program):
-    # THis umbrella function is used to run the actual characteriseation function in a thread to prevent GUnicorn worker timeout.
+    # THis umbrella function is used to run the actual characterisation function in a thread to prevent GUnicorn worker timeout.
     Program = str(Program)
-    if (Program == 'C1'):
+    if Program == 'C1':
         cthread = Thread(target=CharacteriseDevice2, args=(M))
         cthread.setDaemon(True)
         cthread.start()
 
-    return ('', 204)
+    return '', 204
 
 
 def CharacteriseDevice2(M):
@@ -1275,7 +1275,7 @@ def CharacteriseDevice2(M):
     global sysItems
     print('In1')
     M = str(M)
-    if (M == "0"):
+    if M == "0":
         M = sysItems['UIDevice']
 
     result = {
@@ -1330,7 +1330,7 @@ def I2CCom(M, device, rw, hl, data1, data2, SMBUSFLAG):
     device = str(device)  # Name of device to be written to
     rw = int(rw)  # 1 if read, 0 if write
     hl = int(hl)  # 8 or 16
-    SMBUSFLAG = int(SMBUSFLAG)  # If this flag is set to 1 it means we are communuicating with an SMBUs device.
+    SMBUSFLAG = int(SMBUSFLAG)  # If this flag is set to 1 it means we are communicating with an SMBUs device.
     data1 = int(data1)  # First data/register
     if hl < 20:
         data2 = int(data2)  # First data/register
@@ -1338,7 +1338,7 @@ def I2CCom(M, device, rw, hl, data1, data2, SMBUSFLAG):
     global sysData
 
     global sysDevices
-    if (sysData[M]['present'] == 0):  # Something stupid has happened in software if this is the case!
+    if sysData[M]['present'] == 0:  # Something stupid has happened in software if this is the case!
         print(str(datetime.now()) + ' Trying to communicate with absent device - bug in software!. Disabling hardware and software!')
         sysItems['Watchdog']['ON'] = 0  # Basically this will crash all the electronics and the software.
         out = 0
@@ -1352,11 +1352,11 @@ def I2CCom(M, device, rw, hl, data1, data2, SMBUSFLAG):
 
     # We now connect the multiplexer to the appropriate device to allow digital communications.
     tries = 0
-    while (tries != -1):
+    while tries != -1:
         try:
             sysItems['Multiplexer']['device'].write8(int(0x00), int(sysItems['Multiplexer'][M], 2))  # We have established connection to correct device.
             check = (sysItems['Multiplexer']['device'].readRaw8())  # We check that the Multiplexer is indeed connected to the correct channel.
-            if (check == int(sysItems['Multiplexer'][M], 2)):
+            if check == int(sysItems['Multiplexer'][M], 2):
                 tries = -1
             else:
                 tries = tries + 1
@@ -1366,13 +1366,13 @@ def I2CCom(M, device, rw, hl, data1, data2, SMBUSFLAG):
             tries = tries + 1
             time.sleep(0.02)
             print(str(datetime.now()) + ' Failed Multiplexer Comms ' + str(tries) + " times")
-            if (tries > 2):
+            if tries > 2:
                 try:
                     sysItems['Multiplexer']['device'].write8(int(0x00), int(0x00))  # Disconnect multiplexer.
                     print(str(datetime.now()) + 'Disconnected multiplexer on ' + str(M) + ', trying to connect again.')
                 except:
                     print(str(datetime.now()) + 'Failed to recover multiplexer on device ' + str(M))
-            if (tries == 5 or tries == 10 or tries == 15):
+            if tries == 5 or tries == 10 or tries == 15:
                 toggleWatchdog()  # Flip the watchdog pin to ensure it is working.
                 GPIO.output('P8_15', GPIO.LOW)  # Flip the Multiplexer RESET pin. Note this reset function works on Control Board V1.2 and later.
                 time.sleep(0.1)
@@ -1388,22 +1388,22 @@ def I2CCom(M, device, rw, hl, data1, data2, SMBUSFLAG):
             os._exit(4)
 
     time.sleep(0.0005)
-    out = 0;
+    out = 0
     tries = 0
 
-    while (tries != -1):  # We now do appropriate read/write on the bus.
+    while tries != -1:  # We now do appropriate read/write on the bus.
         try:
             if SMBUSFLAG == 0:
                 if rw == 1:
                     if hl == 8:
                         out = int(sysDevices[M][device]['device'].readU8(data1))
-                    elif (hl == 16):
+                    elif hl == 16:
                         out = int(sysDevices[M][device]['device'].readU16(data1, data2))
                 else:
                     if hl == 8:
                         sysDevices[M][device]['device'].write8(data1, data2)
                         out = 1
-                    elif (hl == 16):
+                    elif hl == 16:
                         sysDevices[M][device]['device'].write16(data1, data2)
                         out = 1
 
@@ -1413,15 +1413,15 @@ def I2CCom(M, device, rw, hl, data1, data2, SMBUSFLAG):
         except:  # If the above fails then we can try again (a limited number of times)
             tries = tries + 1
 
-            if (device != "ThermometerInternal"):
+            if device != "ThermometerInternal":
                 print(str(datetime.now()) + ' Failed ' + str(device) + ' comms ' + str(tries) + " times on device " + str(M))
                 time.sleep(0.02)
-            if (device == 'AS7341'):
+            if device == 'AS7341':
                 print(str(datetime.now()) + ' Failed  AS7341 in I2CCom while trying to send ' + str(data1) + " and " + str(data2))
                 out = -1
                 tries = -1
 
-        if (tries > 2 and device == "ThermometerInternal"):  # We don't allow the internal thermometer to fail, since this is what we are using to see if devices are plugged in at all.
+        if tries > 2 and device == "ThermometerInternal":  # We don't allow the internal thermometer to fail, since this is what we are using to see if devices are plugged in at all.
             out = 0
             sysData[M]['present'] = 0
             tries = -1
@@ -1442,7 +1442,7 @@ def I2CCom(M, device, rw, hl, data1, data2, SMBUSFLAG):
 
     lock.release()  # Bus lock is released so next command can occur.
 
-    return (out)
+    return out
 
 
 @application.route("/CalibrateOD/<item>/<M>/<value>/<value2>", methods=['POST'])
@@ -1453,42 +1453,42 @@ def CalibrateOD(M, item, value, value2):
     ODRaw = float(value)
     ODActual = float(value2)
     M = str(M)
-    if (M == "0"):
+    if M == "0":
         M = sysItems['UIDevice']
 
     device = sysData[M]['OD']['device']
-    if (device == 'LASER650'):
+    if device == 'LASER650':
         a = sysData[M]['OD0']['LASERa']  # Retrieve the calibration factors for OD.
         b = sysData[M]['OD0']['LASERb']
-        if (ODActual < 0):
+        if ODActual < 0:
             ODActual = 0
             print(str(datetime.now()) + "You put a negative OD into calibration! Setting it to 0")
 
         raw = ((ODActual / a + (b / (2 * a)) ** 2) ** 0.5) - (b / (2 * a))  # THis is performing the inverse function of the quadratic OD calibration.
         OD0 = (10.0 ** raw) * ODRaw
-        if (OD0 < sysData[M][item]['min']):
+        if OD0 < sysData[M][item]['min']:
             OD0 = sysData[M][item]['min']
             print(str(datetime.now()) + 'OD calibration value seems too low?!')
 
-        if (OD0 > sysData[M][item]['max']):
+        if OD0 > sysData[M][item]['max']:
             OD0 = sysData[M][item]['max']
             print(str(datetime.now()) + 'OD calibration value seems too high?!')
 
         sysData[M][item]['target'] = OD0
         print(str(datetime.now()) + "Calibrated OD")
-    elif (device == 'LEDF'):
+    elif device == 'LEDF':
         a = sysData[M]['OD0']['LEDFa']  # Retrieve the calibration factors for OD.
 
-        if (ODActual < 0):
+        if ODActual < 0:
             ODActual = 0
             print("You put a negative OD into calibration! Setting it to 0")
-        if (M == 'M0'):
+        if M == 'M0':
             CF = 1299.0
-        elif (M == 'M1'):
+        elif M == 'M1':
             CF = 1206.0
-        elif (M == 'M2'):
+        elif M == 'M2':
             CF = 1660.0
-        elif (M == 'M3'):
+        elif M == 'M3':
             CF = 1494.0
 
         # raw=(ODActual)/a  #THis is performing the inverse function of the linear OD calibration.
@@ -1496,28 +1496,28 @@ def CalibrateOD(M, item, value, value2):
         OD0 = ODRaw / ODActual
         print(OD0)
 
-        if (OD0 < sysData[M][item]['min']):
+        if OD0 < sysData[M][item]['min']:
             OD0 = sysData[M][item]['min']
             print('OD calibration value seems too low?!')
-        if (OD0 > sysData[M][item]['max']):
+        if OD0 > sysData[M][item]['max']:
             OD0 = sysData[M][item]['max']
             print('OD calibration value seems too high?!')
 
         sysData[M][item]['target'] = OD0
         print("Calibrated OD")
-    elif (device == 'LEDA'):
+    elif device == 'LEDA':
         a = sysData[M]['OD0']['LEDAa']  # Retrieve the calibration factors for OD.
 
-        if (ODActual < 0):
+        if ODActual < 0:
             ODActual = 0
             print("You put a negative OD into calibration! Setting it to 0")
-        if (M == 'M0'):
+        if M == 'M0':
             CF = 422
-        elif (M == 'M1'):
+        elif M == 'M1':
             CF = 379
-        elif (M == 'M2'):
+        elif M == 'M2':
             CF = 574
-        elif (M == 'M3'):
+        elif M == 'M3':
             CF = 522
 
         # raw=(ODActual)/a  #THis is performing the inverse function of the linear OD calibration.
@@ -1525,17 +1525,17 @@ def CalibrateOD(M, item, value, value2):
         OD0 = ODRaw / ODActual
         print(OD0)
 
-        if (OD0 < sysData[M][item]['min']):
+        if OD0 < sysData[M][item]['min']:
             OD0 = sysData[M][item]['min']
             print('OD calibration value seems too low?!')
-        if (OD0 > sysData[M][item]['max']):
+        if OD0 > sysData[M][item]['max']:
             OD0 = sysData[M][item]['max']
             print('OD calibration value seems too high?!')
 
         sysData[M][item]['target'] = OD0
         print("Calibrated OD")
 
-    return ('', 204)
+    return '', 204
 
 
 @application.route("/MeasureOD/<M>", methods=['POST'])
@@ -1544,10 +1544,10 @@ def MeasureOD(M):
     global sysData
     global sysItems
     M = str(M)
-    if (M == "0"):
+    if M == "0":
         M = sysItems['UIDevice']
     device = sysData[M]['OD']['device']
-    if (device == 'LASER650'):
+    if device == 'LASER650':
         out = GetTransmission(M, 'LASER650', ['CLEAR'], 1, 255)
         sysData[M]['OD0']['raw'] = float(out[0])
 
@@ -1557,52 +1557,52 @@ def MeasureOD(M):
             raw = math.log10(sysData[M]['OD0']['target'] / sysData[M]['OD0']['raw'])
             sysData[M]['OD']['current'] = raw * b + raw * raw * a
         except:
-            sysData[M]['OD']['current'] = 0;
+            sysData[M]['OD']['current'] = 0
             print(str(datetime.now()) + ' OD Measurement exception on ' + str(device))
-    elif (device == 'LEDF'):
+    elif device == 'LEDF':
         out = GetTransmission(M, 'LEDF', ['CLEAR'], 7, 255)
 
         sysData[M]['OD0']['raw'] = out[0]
         a = sysData[M]['OD0']['LEDFa']  # Retrieve the calibration factors for OD.
         try:
-            if (M == 'M0'):
+            if M == 'M0':
                 CF = 1299.0
-            elif (M == 'M1'):
+            elif M == 'M1':
                 CF = 1206.0
-            elif (M == 'M2'):
+            elif M == 'M2':
                 CF = 1660.0
-            elif (M == 'M3'):
+            elif M == 'M3':
                 CF = 1494.0
             # raw=out[0]/CF - sysData[M]['OD0']['target']/CF
             raw = out[0] / sysData[M]['OD0']['target']
             sysData[M]['OD']['current'] = raw
         except:
-            sysData[M]['OD']['current'] = 0;
+            sysData[M]['OD']['current'] = 0
             print(str(datetime.now()) + ' OD Measurement exception on ' + str(device))
 
-    elif (device == 'LEDA'):
+    elif device == 'LEDA':
         out = GetTransmission(M, 'LEDA', ['CLEAR'], 7, 255)
 
         sysData[M]['OD0']['raw'] = out[0]
         a = sysData[M]['OD0']['LEDAa']  # Retrieve the calibration factors for OD.
         try:
-            if (M == 'M0'):
+            if M == 'M0':
                 CF = 422.0
-            elif (M == 'M1'):
+            elif M == 'M1':
                 CF = 379.0
-            elif (M == 'M2'):
+            elif M == 'M2':
                 CF = 574.0
-            elif (M == 'M3'):
+            elif M == 'M3':
                 CF = 522.0
             # raw=out[0]/CF - sysData[M]['OD0']['target']/CF
             raw = out[0] / sysData[M]['OD0']['target']
             # sysData[M]['OD']['current']=raw*a
             sysData[M]['OD']['current'] = raw
         except:
-            sysData[M]['OD']['current'] = 0;
+            sysData[M]['OD']['current'] = 0
             print(str(datetime.now()) + ' OD Measurement exception on ' + str(device))
 
-    return ('', 204)
+    return '', 204
 
 
 @application.route("/MeasureFP/<M>", methods=['POST'])
@@ -1610,21 +1610,21 @@ def MeasureFP(M):
     # Responsible for measuring each of the active Fluorescent proteins.
     global sysData
     M = str(M)
-    if (M == "0"):
+    if M == "0":
         M = sysItems['UIDevice']
     for FP in ['FP1', 'FP2', 'FP3']:
         if sysData[M][FP]['ON'] == 1:
             Gain = int(sysData[M][FP]['Gain'][1:])
             out = GetTransmission(M, sysData[M][FP]['LED'], [sysData[M][FP]['BaseBand'], sysData[M][FP]['Emit1Band'], sysData[M][FP]['Emit2Band']], Gain, 255)
             sysData[M][FP]['Base'] = float(out[0])
-            if (sysData[M][FP]['Base'] > 0):
+            if sysData[M][FP]['Base'] > 0:
                 sysData[M][FP]['Emit1'] = float(out[1]) / sysData[M][FP]['Base']
                 sysData[M][FP]['Emit2'] = float(out[2]) / sysData[M][FP]['Base']
             else:  # This might happen if you try to measure in CLEAR whilst also having CLEAR as baseband!
                 sysData[M][FP]['Emit1'] = float(out[1])
                 sysData[M][FP]['Emit2'] = float(out[2])
 
-    return ('', 204)
+    return '', 204
 
 
 @application.route("/MeasureTemp/<which>/<M>", methods=['POST'])
@@ -1633,16 +1633,16 @@ def MeasureTemp(M, which):
     global sysData
     global sysItems
 
-    if (M == "0"):
+    if M == "0":
         M = sysItems['UIDevice']
     M = str(M)
     which = 'Thermometer' + str(which)
-    if (which == 'ThermometerInternal' or which == 'ThermometerExternal'):
+    if which == 'ThermometerInternal' or which == 'ThermometerExternal':
         getData = I2CCom(M, which, 1, 16, 0x05, 0, 0)
         getDataBinary = bin(getData)
         tempData = getDataBinary[6:]
         temperature = float(int(tempData, 2)) / 16.0
-    elif (which == 'ThermometerIR'):
+    elif which == 'ThermometerIR':
         getData = I2CCom(M, which, 1, 0, 0x07, 0, 1)
         temperature = (getData * 0.02) - 273.15
 
@@ -1651,7 +1651,7 @@ def MeasureTemp(M, which):
     if temperature > 100.0:  # It seems sometimes the IR thermometer returns a value of 1000 due to an error. This prevents that.
         temperature = sysData[M][which]['current']
     sysData[M][which]['current'] = temperature
-    return ('', 204)
+    return '', 204
 
 
 def setPWM(M, device, channels, fraction, ConsecutiveFails):
@@ -1678,7 +1678,7 @@ def setPWM(M, device, channels, fraction, ConsecutiveFails):
     I2CCom(M, device, 0, 8, channels['OFFL'], int(LowVals, 2), 0)
     I2CCom(M, device, 0, 8, channels['OFFH'], int(HighVals, 2), 0)
 
-    if (device == 'Pumps'):
+    if device == 'Pumps':
         I2CCom(M, device, 0, 8, channels['ONL'], 0x00, 0)
         I2CCom(M, device, 0, 8, channels['ONH'], 0x00, 0)
         I2CCom(M, device, 0, 8, channels['OFFL'], int(LowVals, 2), 0)
@@ -1689,7 +1689,7 @@ def setPWM(M, device, channels, fraction, ConsecutiveFails):
         CheckLowON = I2CCom(M, device, 1, 8, channels['ONL'], -1, 0)
         CheckHighON = I2CCom(M, device, 1, 8, channels['ONH'], -1, 0)
 
-        if (CheckLow != (int(LowVals, 2)) or CheckHigh != (int(HighVals, 2)) or CheckHighON != int(0x00) or CheckLowON != int(0x00)):  # We check to make sure it has been set to appropriate values.
+        if CheckLow != (int(LowVals, 2)) or CheckHigh != (int(HighVals, 2)) or CheckHighON != int(0x00) or CheckLowON != int(0x00):  # We check to make sure it has been set to appropriate values.
             ConsecutiveFails = ConsecutiveFails + 1
             print(str(datetime.now()) + ' Failed transmission test on ' + str(device) + ' ' + str(ConsecutiveFails) + ' times consecutively on device ' + str(M))
             if ConsecutiveFails > 10:
@@ -1763,7 +1763,7 @@ def csvData(M):
 
     lock.acquire()  # We are avoiding writing to a file at the same time as we do digital communications, since it might potentially cause the computer to lag and consequently data transfer to fail.
     if os.path.isfile(filename) is False:  # Only if we are starting a fresh file
-        if (len(row) == len(fieldnames)):  # AND the fieldnames match up with what is being written.
+        if len(row) == len(fieldnames):  # AND the fieldnames match up with what is being written.
             with open(filename, 'a') as csvFile:
                 writer = csv.writer(csvFile)
                 writer.writerow(fieldnames)
@@ -1841,7 +1841,7 @@ def RegulateOD(M):
     global sysItems
     M = str(M)
 
-    if (sysData[M]['Zigzag']['ON'] == 1):
+    if sysData[M]['Zigzag']['ON'] == 1:
         TargetOD = sysData[M]['OD']['target']
         Zigzag(M)  # Function that calculates new target pump rates, and sets pumps to desired rates.
 
@@ -1852,7 +1852,7 @@ def RegulateOD(M):
 
     ODNow = sysData[M]['OD']['current']
     ODTarget = sysData[M]['OD']['target']
-    if (ODTarget <= 0):  # There could be an error on the log operationif ODTarget is 0!
+    if ODTarget <= 0:  # There could be an error on the log operation if ODTarget is 0!
         ODTarget = 0.000001
 
     errorTerm = ODTarget - ODNow
@@ -1864,15 +1864,15 @@ def RegulateOD(M):
         Pump1 = 0  # In first few cycles we do precisely no pumping.
     elif len(sysData[M]['time']['record']) < 2:
         Pump1 = 0  # In first few cycles we do precisely no pumping.
-        addTerminal(M, "Warning: Tried to calculate time elapsed with fewer than two " + \
-                    "timepoints recorded. If you see this message a lot, there may be " + \
+        addTerminal(M, "Warning: Tried to calculate time elapsed with fewer than two " +
+                    "timepoints recorded. If you see this message a lot, there may be " +
                     "a more serious problem.")
     else:
         ODPast = sysData[M]['OD']['record'][-1]
         timeElapsed = ((sysData[M]['time']['record'][-1]) - (sysData[M]['time']['record'][-2])) / 60.0  # Amount of time betwix measurements in minutes
-        if (ODNow > 0):
+        if ODNow > 0:
             try:
-                NewGrowth = math.log((ODTarget) / (ODNow)) / timeElapsed
+                NewGrowth = math.log(ODTarget / ODNow) / timeElapsed
             except:
                 NewGrowth = 0.0
         else:
@@ -1887,14 +1887,14 @@ def RegulateOD(M):
         ODIntegral = sysData[M]['OD']['Integral']
         if ODerror < 0.01:
             ODIntegral = 0
-        elif (abs(ODNow - ODPast) < 0.05 and ODerror > 0.025):  # preventing massive accidental jumps causing trouble with this integral term.
+        elif abs(ODNow - ODPast) < 0.05 and ODerror > 0.025:  # preventing massive accidental jumps causing trouble with this integral term.
             ODIntegral = ODIntegral + 0.1 * ODerror
         sysData[M]['OD']['Integral'] = ODIntegral
         # Integrator 2
         ODIntegral2 = sysData[M]['OD']['Integral2']
-        if (abs(ODerror) > 0.1 and abs(ODNow - ODPast) < 0.05):
+        if abs(ODerror) > 0.1 and abs(ODNow - ODPast) < 0.05:
             ODIntegral2 = 0
-        elif (abs(ODNow - ODPast) < 0.1):
+        elif abs(ODNow - ODPast) < 0.1:
             ODIntegral2 = ODIntegral2 + 0.01 * ODerror
             Pump1 = Pump1 * 0.7  # This is essentially enforcing a smaller Proportional gain when we are near to OD setpoint.
         sysData[M]['OD']['Integral2'] = ODIntegral2
@@ -1906,23 +1906,23 @@ def RegulateOD(M):
 
     # Make sure values are in appropriate range. We want to limit the maximum size of pump1 to prevent it from
     # overflowing.
-    if (Pump1 > 0.02):
+    if Pump1 > 0.02:
         Pump1 = 0.02
-    elif (Pump1 < 0):
+    elif Pump1 < 0:
         Pump1 = 0.0
 
-    if (sysData[M]['Chemostat']['ON'] == 1):
+    if sysData[M]['Chemostat']['ON'] == 1:
         Pump1 = float(sysData[M]['Chemostat']['p1'])
 
     # Set new Pump targets
     sysData[M]['Pump1']['target'] = Pump1 * Pump1Direction
     sysData[M]['Pump2']['target'] = (Pump1 * 4 + 0.07) * Pump2Direction
 
-    if (sysData[M]['Experiment']['cycles'] % 5 == 1):  # Every so often we do a big output pump to make sure tubes are clear.
+    if sysData[M]['Experiment']['cycles'] % 5 == 1:  # Every so often we do a big output pump to make sure tubes are clear.
         sysData[M]['Pump2']['target'] = 0.25 * sysData[M]['Pump2']['direction']
 
-    if (sysData[M]['Experiment']['cycles'] > 15):
-        # This section is to check if we have added any liquid recently, if not, then we dont run pump 2 since it won't
+    if sysData[M]['Experiment']['cycles'] > 15:
+        # This section is to check if we have added any liquid recently, if not, then we don't run pump 2 since it won't
         # be needed.
         pastpumping = abs(sysData[M]['Pump1']['target'])
         for pv in range(-10, -1):
@@ -1935,7 +1935,7 @@ def RegulateOD(M):
     SetOutputOn(M, 'Pump1', 1)
     SetOutputOn(M, 'Pump2', 1)
 
-    if (sysData[M]['Zigzag']['ON'] == 1):  # If the zigzag growth estimation is running then we change OD setpoint appropriately.
+    if sysData[M]['Zigzag']['ON'] == 1:  # If the zigzag growth estimation is running then we change OD setpoint appropriately.
         try:
             sysData[M]['OD']['target'] = TargetOD
         except:
@@ -1961,11 +1961,11 @@ def Zigzag(M):
     except:  # This will happen if you activate Zigzag in first control iteration!
         last = current
 
-    if (current < centre - zig and last < centre):
-        if (sysData[M]['Zigzag']['target'] != 5.0):
+    if current < centre - zig and last < centre:
+        if sysData[M]['Zigzag']['target'] != 5.0:
             sysData[M]['Zigzag']['SwitchPoint'] = iteration
         sysData[M]['Zigzag']['target'] = 5.0  # an excessively high OD value.
-    elif (current > centre + zig and last > centre + zig):
+    elif current > centre + zig and last > centre + zig:
         sysData[M]['Zigzag']['target'] = centre - zig * 1.5
         sysData[M]['Zigzag']['SwitchPoint'] = iteration
 
@@ -1974,7 +1974,7 @@ def Zigzag(M):
     # Subsequent section is for growth estimation.
 
     TimeSinceSwitch = iteration - sysData[M]['Zigzag']['SwitchPoint']
-    if (iteration > 6 and TimeSinceSwitch > 5 and current > 0 and last > 0 and sysData[M]['Zigzag']['target'] == 5.0):  # The reason we wait a few minutes after starting growth is that new media may still be introduced, it takes a while for the growth to get going.
+    if iteration > 6 and TimeSinceSwitch > 5 and current > 0 and last > 0 and sysData[M]['Zigzag']['target'] == 5.0:  # The reason we wait a few minutes after starting growth is that new media may still be introduced, it takes a while for the growth to get going.
         dGrowthRate = (math.log(current) - math.log(last)) * 60.0  # Converting to units of 1/hour
         sysData[M]['GrowthRate']['current'] = sysData[M]['GrowthRate']['current'] * 0.95 + dGrowthRate * 0.05  # We are essentially implementing an online growth rate estimator with learning rate 0.05
 
@@ -1985,7 +1985,7 @@ def Zigzag(M):
 def ExperimentReset():
     # Resets parameters/values of a given experiment.
     initialise(sysItems['UIDevice'])
-    return ('', 204)
+    return '', 204
 
 
 @application.route("/Experiment/<value>/<M>", methods=['POST'])
@@ -1995,17 +1995,17 @@ def ExperimentStartStop(M, value):
     global sysDevices
     global sysItems
     M = str(M)
-    if (M == "0"):
+    if M == "0":
         M = sysItems['UIDevice']
 
     value = int(value)
     # Turning it on involves keeping current pump directions,
-    if (value and (sysData[M]['Experiment']['ON'] == 0)):
+    if value and (sysData[M]['Experiment']['ON'] == 0):
 
         sysData[M]['Experiment']['ON'] = 1
         addTerminal(M, 'Experiment Started')
 
-        if (sysData[M]['Experiment']['cycles'] == 0):
+        if sysData[M]['Experiment']['cycles'] == 0:
             now = datetime.now()
             timeString = now.strftime("%Y-%m-%d %H:%M:%S")
             sysData[M]['Experiment']['startTime'] = timeString
@@ -2019,7 +2019,7 @@ def ExperimentStartStop(M, value):
         SetOutputOn(M, 'Thermostat', 1)
         sysDevices[M]['Experiment'] = Thread(target=runExperiment, args=(M, 'placeholder'))
         sysDevices[M]['Experiment'].setDaemon(True)
-        sysDevices[M]['Experiment'].start();
+        sysDevices[M]['Experiment'].start()
 
     else:
         sysData[M]['Experiment']['ON'] = 0
@@ -2030,7 +2030,7 @@ def ExperimentStartStop(M, value):
         SetOutputOn(M, 'Stir', 0)
         SetOutputOn(M, 'Thermostat', 0)
 
-    return ('', 204)
+    return '', 204
 
 
 def runExperiment(M, placeholder):
@@ -2054,7 +2054,7 @@ def runExperiment(M, placeholder):
 
     SetOutputOn(M, 'Stir', 0)  # Turning stirring off
     time.sleep(5.0)  # Wait for liquid to settle.
-    if (sysData[M]['Experiment']['ON'] == 0):
+    if sysData[M]['Experiment']['ON'] == 0:
         turnEverythingOff(M)
         sysData[M]['Experiment']['cycles'] = sysData[M]['Experiment']['cycles'] - 1  # Cycle didn't finish, don't count it.
         addTerminal(M, 'Experiment Stopped')
@@ -2075,7 +2075,7 @@ def runExperiment(M, placeholder):
     MeasureTemp(M, 'IR')
     MeasureFP(M)  # And now fluorescent protein concentrations.
 
-    if (sysData[M]['Experiment']['ON'] == 0):  # We do another check post-measurement to see whether we need to end the experiment.
+    if sysData[M]['Experiment']['ON'] == 0:  # We do another check post-measurement to see whether we need to end the experiment.
         turnEverythingOff(M)
         sysData[M]['Experiment']['cycles'] = sysData[M]['Experiment']['cycles'] - 1  # Cycle didn't finish, don't count it.
         addTerminal(M, 'Experiment Stopped')
@@ -2095,22 +2095,22 @@ def runExperiment(M, placeholder):
     #         sysData[M]['biofilm'][item][band]=int(sysData[M]['AS7341']['spectrum'][band])
 
     sysData[M]['OD']['Measuring'] = 0
-    if (sysData[M]['OD']['ON'] == 1):
+    if sysData[M]['OD']['ON'] == 1:
         RegulateOD(M)  # Function that calculates new target pump rates, and sets pumps to desired rates.
 
     LightActuation(M, 1)
 
-    if (sysData[M]['Custom']['ON'] == 1):  # Check if we have enabled custom programs
-        CustomThread = Thread(target=CustomProgram, args=(M,))  # We run this in a thread in case we are doing something slow, we dont want to hang up the main l00p. The comma after M is to cast the args as a tuple to prevent it iterating over the thread M
+    if sysData[M]['Custom']['ON'] == 1:  # Check if we have enabled custom programs
+        CustomThread = Thread(target=CustomProgram, args=(M,))  # We run this in a thread in case we are doing something slow, we don't want to hang up the main l00p. The comma after M is to cast the args as a tuple to prevent it iterating over the thread M
         CustomThread.setDaemon(True)
-        CustomThread.start();
+        CustomThread.start()
 
     Pump2Ontime = sysData[M]['Experiment']['cycleTime'] * 1.05 * abs(sysData[M]['Pump2']['target']) * sysData[M]['Pump2']['ON'] + 0.5  # The amount of time Pump2 is going to be on for following RegulateOD above.
     time.sleep(Pump2Ontime)  # Pause here is to prevent output pumping happening at the same time as stirring.
 
     SetOutputOn(M, 'Stir', 1)  # Start stirring again.
 
-    if (sysData[M]['Experiment']['cycles'] % 10 == 9):  # Don't want terminal getting unruly, so clear it each 10 rotations.
+    if sysData[M]['Experiment']['cycles'] % 10 == 9:  # Don't want terminal getting unruly, so clear it each 10 rotations.
         clearTerminal(M)
 
     # Below stores all the results for plotting later
@@ -2131,7 +2131,7 @@ def runExperiment(M, placeholder):
         if sysData[M][FP]['ON'] == 1:
             sysData[M][FP]['BaseRecord'].append(sysData[M][FP]['Base'])
             sysData[M][FP]['Emit1Record'].append(sysData[M][FP]['Emit1'])
-            if (sysData[M][FP]['Emit2Band'] != "OFF"):
+            if sysData[M][FP]['Emit2Band'] != "OFF":
                 sysData[M][FP]['Emit2Record'].append(sysData[M][FP]['Emit2'])
             else:
                 sysData[M][FP]['Emit2Record'].append(0.0)
@@ -2142,13 +2142,13 @@ def runExperiment(M, placeholder):
 
     # We downsample our records such that the size of the data vectors being plot in the web interface does not get
     # unruly.
-    if (len(sysData[M]['time']['record']) > 200):
+    if len(sysData[M]['time']['record']) > 200:
         downsample(M)
 
-    #### Writing Results to data files
+    # Writing Results to data files
     csvData(M)  # This command writes system data to a CSV file for future keeping.
     # And intermittently write the setup parameters to a data file.
-    if (sysData[M]['Experiment']['cycles'] % 10 == 1):  # We only write whole configuration file each 10 cycles since it is not really that important.
+    if sysData[M]['Experiment']['cycles'] % 10 == 1:  # We only write whole configuration file each 10 cycles since it is not really that important.
         TempStartTime = sysData[M]['Experiment']['startTimeRaw']
         sysData[M]['Experiment']['startTimeRaw'] = 0  # We had to set this to zero during the write operation since the system does not like writing data in such a format.
 
@@ -2158,9 +2158,9 @@ def runExperiment(M, placeholder):
         simplejson.dump(sysData[M], f)
         f.close()
         sysData[M]['Experiment']['startTimeRaw'] = TempStartTime
-    ##### Written
+    # Written
 
-    if (sysData[M]['Experiment']['ON'] == 0):
+    if sysData[M]['Experiment']['ON'] == 0:
         turnEverythingOff(M)
         addTerminal(M, 'Experiment Stopped')
         return
@@ -2169,7 +2169,7 @@ def runExperiment(M, placeholder):
     elapsedTime2 = nowend - now
     elapsedTimeSeconds2 = round(elapsedTime2.total_seconds(), 2)
     sleeptime = CycleTime - elapsedTimeSeconds2
-    if (sleeptime < 0):
+    if sleeptime < 0:
         sleeptime = 0
         addTerminal(M, 'Experiment Cycle Time is too short!!!')
 
@@ -2178,10 +2178,10 @@ def runExperiment(M, placeholder):
     addTerminal(M, 'Cycle ' + str(sysData[M]['Experiment']['cycles']) + ' Complete')
 
     # Now we run this function again if the automated experiment is still going.
-    if (sysData[M]['Experiment']['ON'] and sysData[M]['Experiment']['threadCount'] == currentThread):
+    if sysData[M]['Experiment']['ON'] and sysData[M]['Experiment']['threadCount'] == currentThread:
         sysDevices[M]['Experiment'] = Thread(target=runExperiment, args=(M, 'placeholder'))
         sysDevices[M]['Experiment'].setDaemon(True)
-        sysDevices[M]['Experiment'].start();
+        sysDevices[M]['Experiment'].start()
 
     else:
         turnEverythingOff(M)
