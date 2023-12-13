@@ -18,9 +18,36 @@ import simplejson
 import copy
 import csv
 import smbus2 as smbus
+import collections
+import logging
+from logging.handlers import TimedRotatingFileHandler
+
+
+def check_config_value(config_key, default_value, critical=False):
+    """It checks whether a given config parameter (key in the config dictionary) exists.
+
+    When a parameter is missing, it sets new default value or raise an error"""
+    if config_key not in application.config.keys():
+        if critical:
+            err_msg = 'config value for %s was not found, it must be set for safe operations' % config_key
+            application.logger.error(err_msg)
+            raise ValueError(err_msg)
+        application.config[config_key] = default_value
+        application.logger.warning('config value %s was not found and set to default: %s' % (config_key, default_value))
+    else:
+        application.logger.info('config found: %s=%s' % (config_key, application.config[config_key]))
+
 
 application = Flask(__name__)
+application.config.from_pyfile('config/chibio_default.cfg', silent=True)
 application.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0  # Try this https://stackoverflow.com/questions/23112316/using-flask-how-do-i-modify-the-cache-control-header-for-all-output/23115561#23115561
+check_config_value(config_key='LOG_LEVEL', default_value='WARNING')
+log_level = logging.getLevelName(application.config['LOG_LEVEL'])
+application.logger.setLevel(level=log_level)
+handler = TimedRotatingFileHandler(filename='./log/chibio.log', when="w0", interval=1, backupCount=5)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+application.logger.addHandler(handler)
 
 lock = Lock()
 
@@ -34,6 +61,7 @@ sysData = {'M0': {
     'presentDevices': {'M0': 0, 'M1': 0, 'M2': 0, 'M3': 0, 'M4': 0, 'M5': 0, 'M6': 0, 'M7': 0},
     'Version': {'value': 'Turbidostat V3.0'},
     'DeviceID': '',
+    'DeviceName': '',
     'time': {'record': []},
     'LEDA': {'WL': '395', 'default': 0.1, 'target': 0.0, 'max': 1.0, 'min': 0.0, 'ON': 0},
     'LEDB': {'WL': '457', 'default': 0.1, 'target': 0.0, 'max': 1.0, 'min': 0.0, 'ON': 0},
@@ -47,7 +75,7 @@ sysData = {'M0': {
     'Heat': {'default': 0.0, 'target': 0.0, 'max': 1.0, 'min': 0.0, 'ON': 0, 'record': []},
     'Thermostat': {'default': 37.0, 'target': 0.0, 'max': 50.0, 'min': 0.0, 'ON': 0, 'record': [], 'cycleTime': 30.0,
                    'Integral': 0.0, 'last': -1},
-    'Experiment': {'indicator': 'USR0', 'startTime': 'Waiting', 'startTimeRaw': 0, 'ON': 0, 'cycles': 0,
+    'Experiment': {'indicator': 'USR0', 'experimentID': '', 'startTime': 'Waiting', 'startTimeRaw': 0, 'ON': 0, 'cycles': 0,
                    'cycleTime': 60.0, 'threadCount': 0},
     'Terminal': {'text': ''},
     'AS7341': {
@@ -193,19 +221,19 @@ sysItems = {
 # devices. This section is therefore critical to operation of the device.
 def runWatchdog():
     # Watchdog timing function which continually runs in a thread.
-    global sysItems
+    global sysItems;
     if sysItems['Watchdog']['ON'] == 1:
         # sysItems['Watchdog']['thread']
         toggleWatchdog()
         time.sleep(0.15)
         sysItems['Watchdog']['thread'] = Thread(target=runWatchdog, args=())
         sysItems['Watchdog']['thread'].setDaemon(True)
-        sysItems['Watchdog']['thread'].start()
+        sysItems['Watchdog']['thread'].start();
 
 
 def toggleWatchdog():
     # Toggle the watchdog
-    global sysItems
+    global sysItems;
     GPIO.output(sysItems['Watchdog']['pin'], GPIO.HIGH)
     time.sleep(0.05)
     GPIO.output(sysItems['Watchdog']['pin'], GPIO.LOW)
@@ -213,9 +241,10 @@ def toggleWatchdog():
 
 GPIO.setup(sysItems['Watchdog']['pin'], GPIO.OUT)
 print(str(datetime.now()) + ' Starting watchdog')
+application.logger.info('Starting watchdog')
 sysItems['Watchdog']['thread'] = Thread(target=runWatchdog, args=())
 sysItems['Watchdog']['thread'].setDaemon(True)
-sysItems['Watchdog']['thread'].start()
+sysItems['Watchdog']['thread'].start();
 GPIO.setup('P8_15', GPIO.OUT)  # This output connects to the RESET pin on the I2C Multiplexer.
 GPIO.output('P8_15', GPIO.HIGH)
 GPIO.setup('P8_17', GPIO.OUT)  # This output connects to D input of the D-Latch
@@ -225,8 +254,8 @@ GPIO.output('P8_17', GPIO.HIGH)
 def initialise(M):
     # Function that initialises all parameters / clears stored values for a given device.
     # If you want to record/add values to sysData, recommend adding an initialisation line in here.
-    global sysData
-    global sysItems
+    global sysData;
+    global sysItems;
     global sysDevices
 
     for LED in ['LEDA', 'LEDB', 'LEDC', 'LEDD', 'LEDE', 'LEDF', 'LEDG']:
@@ -245,6 +274,8 @@ def initialise(M):
     sysData[M][FP]['Base'] = 0
     sysData[M][FP]['Emit1'] = 0
     sysData[M][FP]['Emit2'] = 0
+    sysData[M][FP]['Emit1_raw'] = 0
+    sysData[M][FP]['Emit2_raw'] = 0
     sysData[M][FP]['BaseBand'] = "CLEAR"
     sysData[M][FP]['Emit1Band'] = "nm510"
     sysData[M][FP]['Emit2Band'] = "nm550"
@@ -258,6 +289,8 @@ def initialise(M):
     sysData[M][FP]['Base'] = 0
     sysData[M][FP]['Emit1'] = 0
     sysData[M][FP]['Emit2'] = 0
+    sysData[M][FP]['Emit1_raw'] = 0
+    sysData[M][FP]['Emit2_raw'] = 0
     sysData[M][FP]['BaseBand'] = "CLEAR"
     sysData[M][FP]['Emit1Band'] = "nm583"
     sysData[M][FP]['Emit2Band'] = "nm620"
@@ -271,6 +304,8 @@ def initialise(M):
     sysData[M][FP]['Base'] = 0
     sysData[M][FP]['Emit1'] = 0
     sysData[M][FP]['Emit2'] = 0
+    sysData[M][FP]['Emit1_raw'] = 0
+    sysData[M][FP]['Emit2_raw'] = 0
     sysData[M][FP]['BaseBand'] = "CLEAR"
     sysData[M][FP]['Emit1Band'] = "nm620"
     sysData[M][FP]['Emit2Band'] = "nm670"
@@ -280,18 +315,18 @@ def initialise(M):
     sysData[M][FP]['Gain'] = "x10"
 
     for PUMP in ['Pump1', 'Pump2', 'Pump3', 'Pump4']:
-        sysData[M][PUMP]['default'] = 0.0
+        sysData[M][PUMP]['default'] = 0.0;
         sysData[M][PUMP]['target'] = sysData[M][PUMP]['default']
         sysData[M][PUMP]['ON'] = 0
         sysData[M][PUMP]['direction'] = 1.0
         sysDevices[M][PUMP]['threadCount'] = 0
         sysDevices[M][PUMP]['active'] = 0
 
-    sysData[M]['Heat']['default'] = 0
+    sysData[M]['Heat']['default'] = 0;
     sysData[M]['Heat']['target'] = sysData[M]['Heat']['default']
     sysData[M]['Heat']['ON'] = 0
 
-    sysData[M]['Thermostat']['default'] = 37.0
+    sysData[M]['Thermostat']['default'] = 37.0;
     sysData[M]['Thermostat']['target'] = sysData[M]['Thermostat']['default']
     sysData[M]['Thermostat']['ON'] = 0
     sysData[M]['Thermostat']['Integral'] = 0
@@ -313,7 +348,7 @@ def initialise(M):
     sysData[M]['Custom']['param3'] = 0.0
 
     sysData[M]['OD']['current'] = 0.0
-    sysData[M]['OD']['target'] = sysData[M]['OD']['default']
+    sysData[M]['OD']['target'] = sysData[M]['OD']['default'];
     sysData[M]['OD0']['target'] = 65000.0
     sysData[M]['OD0']['raw'] = 65000.0
     sysData[M]['OD']['device'] = 'LASER650'
@@ -325,11 +360,12 @@ def initialise(M):
     sysData[M]['Volume']['target'] = 20.0
 
     clearTerminal(M)
-    addTerminal(M, 'System Initialised')
+    addTerminal(M, 'System for %s (%s) Initialised' % (M, sysData[M]['DeviceID']))
 
     sysData[M]['Experiment']['ON'] = 0
     sysData[M]['Experiment']['cycles'] = 0
     sysData[M]['Experiment']['threadCount'] = 0
+    sysData[M]['Experiment']['experimentID'] = None
     sysData[M]['Experiment']['startTime'] = ' Waiting '
     sysData[M]['Experiment']['startTimeRaw'] = 0
     sysData[M]['OD']['ON'] = 0
@@ -399,9 +435,33 @@ def initialise(M):
     # getData=I2CCom(M,which,1,16,0x05,0,0)
 
     scanDevices(M)
+    # TODO remove this from here!
+    # read device config
+    config_file = "config/device_config.csv"
+    if os.path.exists(config_file):
+        device_config = dict()
+        fit_parameters = collections.namedtuple('fit_param', 'name LASERa LASERb')
+        with open(config_file) as f_config:
+            input_file = csv.DictReader(f_config)
+            for row in input_file:
+                fit_data = fit_parameters(name=row['device_name'],
+                                          LASERa=row['fit_quad_coeff'], LASERb=row['fit_lin_coeff'])
+                device_config[row['device_id']] = fit_data
+
     if sysData[M]['present'] == 1:
+        # adjust sysData based on device config (if config exists)
+        if os.path.exists(config_file):
+            try:
+                fit_data = device_config[sysData[M]['DeviceID']]
+                sysData[M]['OD0']['LASERa'] = float(fit_data.LASERa)
+                sysData[M]['OD0']['LASERb'] = float(fit_data.LASERb)
+                sysData[M]['DeviceName'] = fit_data.name
+            except KeyError:
+                print('config for device %s was not found!' % sysData[M]['DeviceID'])
         turnEverythingOff(M)
-        print(str(datetime.now()) + " Initialised " + str(M) + ', Device ID: ' + sysData[M]['DeviceID'])
+        device_str = ' Initialised %s Device name: %s Device ID: %s' % (M, sysData[M]['DeviceName'], sysData[M]['DeviceID'])
+        print(str(datetime.now()) + device_str)
+        application.logger.info(device_str)
 
 
 def initialiseAll():
@@ -409,7 +469,15 @@ def initialiseAll():
     sysItems['Multiplexer']['device'] = I2C.get_i2c_device(0x74, 2)
     sysItems['FailCount'] = 0
     time.sleep(2.0)  # This wait is to allow the watchdog circuit to boot.
+    check_config_value(config_key='CONTINUOUS_STIRRING', default_value=False)
     print(str(datetime.now()) + ' Initialising devices')
+    application.logger.info('Initialising devices')
+
+    check_config_value(config_key='TWO_PUMPS_PER_DEVICE', default_value=False)
+    check_config_value(config_key='NUMBER_OF_OD_MEASUREMENTS', default_value=4)
+    check_config_value(config_key='DEVICE_COMM_FAILURE_THRESHOLD', default_value=10)
+    check_config_value(config_key='DATA_DIR', default_value='data')
+    check_config_value(config_key='BEAGLEBONE_NAME', default_value='beaglebone')
 
     for M in ['M0', 'M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7']:
         initialise(M)
@@ -432,7 +500,13 @@ def turnEverythingOff(M):
 
     I2CCom(M, 'DAC', 0, 8, int('00000000', 2), int('00000000', 2), 0)  # Sets all DAC Channels to zero!!!
     setPWM(M, 'PWM', sysItems['All'], 0, 0)
-    setPWM(M, 'Pumps', sysItems['All'], 0, 0)
+
+    if application.config['TWO_PUMPS_PER_DEVICE']:
+        chibios_to_shut_down = [0, 1, 2, 3]
+    else:
+        chibios_to_shut_down = [0, 1, 2, 4, 5, 6, 7]
+    if int(M[1]) in chibios_to_shut_down:
+        setPWM(M=M, device='Pumps', channels=sysItems['All'], fraction=0, ConsecutiveFails=0)
 
     SetOutputOn(M, 'Stir', 0)
     SetOutputOn(M, 'Thermostat', 0)
@@ -451,6 +525,8 @@ def index():
     global sysItems
 
     outputdata = sysData[sysItems['UIDevice']]
+    # sending the current beaglebone's name to UI
+    outputdata['beaglebone_name'] = application.config['BEAGLEBONE_NAME']
     for M in ['M0', 'M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7']:
         if sysData[M]['present'] == 1:
             outputdata['presentDevices'][M] = 1
@@ -527,6 +603,7 @@ def GetID(M):
 def addTerminal(M, strIn):
     # Responsible for adding a new line to the terminal in the UI.
     global sysData
+    application.logger.info(strIn)
     now = datetime.now()
     timeString = now.strftime("%Y-%m-%d %H:%M:%S ")
     sysData[M]['Terminal']['text'] = timeString + ' - ' + str(strIn) + '</br>' + sysData[M]['Terminal']['text']
@@ -541,7 +618,7 @@ def clearTerminal(M):
         M = sysItems['UIDevice']
 
     sysData[M]['Terminal']['text'] = ''
-    addTerminal(M, 'Terminal Cleared')
+    addTerminal(M, 'Terminal on %s (%s) Cleared' % (M, sysData[M]['DeviceID']))
     return '', 204
 
 
@@ -578,7 +655,9 @@ def SetOutputTarget(M, item, value):
     M = str(M)
     if M == "0":
         M = sysItems['UIDevice']
-    print(str(datetime.now()) + " Set item: " + str(item) + " to value " + str(value) + " on " + str(M))
+    info_msg = " Set item: %s to value %s on %s (%s)" % (str(item), str(value), M, sysData[M]['DeviceID'])
+    print(str(datetime.now()) + info_msg)
+    application.logger.info(info_msg)
     if value < sysData[M][item]['min']:
         value = sysData[M][item]['min']
     if value > sysData[M][item]['max']:
@@ -602,15 +681,19 @@ def SetOutputOn(M, item, force):
     M = str(M)
     if M == "0":
         M = sysItems['UIDevice']
-    # The first statements are to force it on or off it the command is called in force mode (force implies it sets it
-    # to a given state, regardless of what it is currently in)
+    application.logger.info('device: %s on %s (%s), output is  %d ' % (item, M, sysData[M]['DeviceID'], force))
+    # The first statements are to force it on or off it the command is called in force mode (force implies it sets it to
+    # a given state, regardless of what it is currently in)
     if force == 1:
         sysData[M][item]['ON'] = 1
         SetOutput(M, item)
         return '', 204
-
+    elif application.config['CONTINUOUS_STIRRING'] and item == 'Stir' and force == 0:
+        sysData[M][item]['ON'] = 0.4
+        SetOutput(M, item)
+        return '', 204
     elif force == 0:
-        sysData[M][item]['ON'] = 0
+        sysData[M][item]['ON'] = 0;
         SetOutput(M, item)
         return '', 204
 
@@ -621,7 +704,7 @@ def SetOutputOn(M, item, force):
         return '', 204
 
     else:
-        sysData[M][item]['ON'] = 0
+        sysData[M][item]['ON'] = 0;
         SetOutput(M, item)
         return '', 204
 
@@ -657,7 +740,7 @@ def SetOutput(M, item):
     elif item == 'Thermostat':
         sysDevices[M][item]['thread'] = Thread(target=Thermostat, args=(M, item))
         sysDevices[M][item]['thread'].setDaemon(True)
-        sysDevices[M][item]['thread'].start()
+        sysDevices[M][item]['thread'].start();
 
     elif item == 'Pump1' or item == 'Pump2' or item == 'Pump3' or item == 'Pump4':
         if sysData[M][item]['target'] == 0:
@@ -665,7 +748,7 @@ def SetOutput(M, item):
         sysDevices[M][item]['thread'] = Thread(target=PumpModulation, args=(M, item))
 
         sysDevices[M][item]['thread'].setDaemon(True)
-        sysDevices[M][item]['thread'].start()
+        sysDevices[M][item]['thread'].start();
 
     elif item == 'OD':
         SetOutputOn(M, 'Pump1', 0)
@@ -701,6 +784,26 @@ def PumpModulation(M, item):
     global sysItems
     global sysDevices
 
+    if application.config['TWO_PUMPS_PER_DEVICE']:
+        pump_mapping = {'M4': 'M0', 'M5': 'M1', 'M6': 'M2', 'M7': 'M3'}
+        if int(M[1]) in [0, 1, 2, 3]:
+            if item == 'Pump1' or item == 'Pump2':
+                MB = M
+                itemB = item
+            elif item == 'Pump3' or item == 'Pump4':
+                sysData[M][item]['ON'] = 0
+                return
+        else:
+            if item == 'Pump1' or item == 'Pump2':
+                MB = pump_mapping[M]
+                itemB = 'Pump' + str(int(item[4]) + 2)
+            elif item == 'Pump3' or item == 'Pump4':
+                sysData[M][item]['ON'] = 0
+                return
+    else:
+        MB = M
+        itemB = item
+
     sysDevices[M][item]['threadCount'] = (sysDevices[M][item]['threadCount'] + 1) % 100  # Index of the particular thread running.
     currentThread = sysDevices[M][item]['threadCount']
 
@@ -709,10 +812,10 @@ def PumpModulation(M, item):
 
     if abs(sysData[M][item]['target'] * sysData[M][item]['ON']) != 1 and currentThread == sysDevices[M][item]['threadCount']:  # In all cases we turn things off to begin
         sysDevices[M][item]['active'] = 1
-        setPWM(M, 'Pumps', sysItems[item]['In1'], 0.0 * float(sysData[M][item]['ON']), 0)
-        setPWM(M, 'Pumps', sysItems[item]['In2'], 0.0 * float(sysData[M][item]['ON']), 0)
-        setPWM(M, 'Pumps', sysItems[item]['In1'], 0.0 * float(sysData[M][item]['ON']), 0)
-        setPWM(M, 'Pumps', sysItems[item]['In2'], 0.0 * float(sysData[M][item]['ON']), 0)
+        setPWM(MB, 'Pumps', sysItems[itemB]['In1'], 0.0 * float(sysData[M][item]['ON']), 0)
+        setPWM(MB, 'Pumps', sysItems[itemB]['In2'], 0.0 * float(sysData[M][item]['ON']), 0)
+        setPWM(MB, 'Pumps', sysItems[itemB]['In1'], 0.0 * float(sysData[M][item]['ON']), 0)
+        setPWM(MB, 'Pumps', sysItems[itemB]['In2'], 0.0 * float(sysData[M][item]['ON']), 0)
         sysDevices[M][item]['active'] = 0
     if sysData[M][item]['ON'] == 0:
         return
@@ -730,23 +833,23 @@ def PumpModulation(M, item):
 
     if sysData[M][item]['target'] > 0 and currentThread == sysDevices[M][item]['threadCount']:  # Turning on pumps in forward direction
         sysDevices[M][item]['active'] = 1
-        setPWM(M, 'Pumps', sysItems[item]['In1'], 1.0 * float(sysData[M][item]['ON']), 0)
-        setPWM(M, 'Pumps', sysItems[item]['In2'], 0.0 * float(sysData[M][item]['ON']), 0)
+        setPWM(MB, 'Pumps', sysItems[itemB]['In1'], 1.0 * float(sysData[M][item]['ON']), 0)
+        setPWM(MB, 'Pumps', sysItems[itemB]['In2'], 0.0 * float(sysData[M][item]['ON']), 0)
         sysDevices[M][item]['active'] = 0
     elif sysData[M][item]['target'] < 0 and currentThread == sysDevices[M][item]['threadCount']:  # Or backward direction.
         sysDevices[M][item]['active'] = 1
-        setPWM(M, 'Pumps', sysItems[item]['In1'], 0.0 * float(sysData[M][item]['ON']), 0)
-        setPWM(M, 'Pumps', sysItems[item]['In2'], 1.0 * float(sysData[M][item]['ON']), 0)
+        setPWM(MB, 'Pumps', sysItems[itemB]['In1'], 0.0 * float(sysData[M][item]['ON']), 0)
+        setPWM(MB, 'Pumps', sysItems[itemB]['In2'], 1.0 * float(sysData[M][item]['ON']), 0)
         sysDevices[M][item]['active'] = 0
 
     time.sleep(Ontime)
 
     if abs(sysData[M][item]['target']) != 1 and currentThread == sysDevices[M][item]['threadCount']:  # Turning off pumps at appropriate time.
         sysDevices[M][item]['active'] = 1
-        setPWM(M, 'Pumps', sysItems[item]['In1'], 0.0 * float(sysData[M][item]['ON']), 0)
-        setPWM(M, 'Pumps', sysItems[item]['In2'], 0.0 * float(sysData[M][item]['ON']), 0)
-        setPWM(M, 'Pumps', sysItems[item]['In1'], 0.0 * float(sysData[M][item]['ON']), 0)
-        setPWM(M, 'Pumps', sysItems[item]['In2'], 0.0 * float(sysData[M][item]['ON']), 0)
+        setPWM(MB, 'Pumps', sysItems[itemB]['In1'], 0.0 * float(sysData[M][item]['ON']), 0)
+        setPWM(MB, 'Pumps', sysItems[itemB]['In2'], 0.0 * float(sysData[M][item]['ON']), 0)
+        setPWM(MB, 'Pumps', sysItems[itemB]['In1'], 0.0 * float(sysData[M][item]['ON']), 0)
+        setPWM(MB, 'Pumps', sysItems[itemB]['In2'], 0.0 * float(sysData[M][item]['ON']), 0)
         sysDevices[M][item]['active'] = 0
 
     Time2 = datetime.now()
@@ -759,7 +862,7 @@ def PumpModulation(M, item):
     if sysData[M][item]['ON'] == 1 and sysDevices[M][item]['threadCount'] == currentThread:  # If pumps need to keep going, this starts a new pump thread.
         sysDevices[M][item]['thread'] = Thread(target=PumpModulation, args=(M, item))
         sysDevices[M][item]['thread'].setDaemon(True)
-        sysDevices[M][item]['thread'].start()
+        sysDevices[M][item]['thread'].start();
 
 
 def Thermostat(M, item):
@@ -798,7 +901,7 @@ def Thermostat(M, item):
         I = I + 0.0005 * dt * e
         P = 0.25 * e
     else:
-        P = 0.5 * e
+        P = 0.5 * e;
 
     if abs(TargetTemp - LastTemp) > 2.0:  # This resets integrator if we make a big jump in set point.
         I = 0.0
@@ -832,7 +935,7 @@ def Thermostat(M, item):
     if sysData[M][item]['ON'] == 1 and sysDevices[M][item]['threadCount'] == currentThread:
         sysDevices[M][item]['thread'] = Thread(target=Thermostat, args=(M, item))
         sysDevices[M][item]['thread'].setDaemon(True)
-        sysDevices[M][item]['thread'].start()
+        sysDevices[M][item]['thread'].start();
     else:
         sysData[M]['Heat']['ON'] = 0
         sysData[M]['Heat']['target'] = 0
@@ -919,10 +1022,13 @@ def AS7341Read(M, Gain, ISteps, reset):
     sysData[M]['AS7341']['current']['ADC4'] = int(bin(C4_H)[2:].zfill(8) + bin(C4_L)[2:].zfill(8), 2)
     sysData[M]['AS7341']['current']['ADC5'] = int(bin(C5_H)[2:].zfill(8) + bin(C5_L)[2:].zfill(8), 2)
 
+    # TODO ZAT this warning was moved to GetLight(), the one below can be removed in a future version.
     if (sysData[M]['AS7341']['current']['ADC0'] == 65535 or sysData[M]['AS7341']['current']['ADC1'] == 65535 or
             sysData[M]['AS7341']['current']['ADC2'] == 65535 or sysData[M]['AS7341']['current']['ADC3'] == 65535 or
             sysData[M]['AS7341']['current']['ADC4'] == 65535 or sysData[M]['AS7341']['current']['ADC5'] == 65535):
-        print(str(datetime.now()) + ' Spectrometer measurement was saturated on device ' + str(M))  # Not sure if this saturation check above actually works correctly...
+        info_msg = ' Spectrometer measurement was saturated on device %s (%s)' % (M, sysData[M]['DeviceID'])
+        print(str(datetime.now()) + info_msg)  # Not sure if this saturation check above actually works correctly...
+        application.logger.info(info_msg)
     return 0
 
 
@@ -989,7 +1095,7 @@ def GetLight(M, wavelengths, Gain, ISteps):
                 'ExtGPIO', 'ExtINT', 'FLICKER']
     for channel in channels:
         sysData[M]['AS7341']['channels'][channel] = 0  # First we set all measurement ADC indexes to zero.
-    index = 1
+    index = 1;
     for wavelength in wavelengths:
         if wavelength != "OFF":
             sysData[M]['AS7341']['channels'][wavelength] = index  # Now assign ADCs to each of the channel where needed.
@@ -1001,10 +1107,15 @@ def GetLight(M, wavelengths, Gain, ISteps):
             AS7341Read(M, Gain, ISteps, success)
             success = 2
         except:
-            print(str(datetime.now()) + 'AS7341 measurement failed on ' + str(M))
+            warn_msg = 'AS7341 measurement failed on %s (%s)' % (M, sysData[M]['DeviceID'])
+            print(str(datetime.now()) + warn_msg)
+            application.logger.warning(warn_msg)
             success = success + 1
             if success == 2:
-                print(str(datetime.now()) + 'AS7341 measurement failed twice on ' + str(M) + ', setting unity values')
+                warn_msg = 'AS7341 measurement failed twice on %s (%s) setting unity values' \
+                           % (M, sysData[M]['DeviceID'])
+                print(str(datetime.now()) + warn_msg)
+                application.logger.warning(warn_msg)
                 sysData[M]['AS7341']['current']['ADC0'] = 1
                 DACS = ['ADC1', 'ADC2', 'ADC3', 'ADC4', 'ADC5']
                 for DAC in DACS:
@@ -1016,6 +1127,11 @@ def GetLight(M, wavelengths, Gain, ISteps):
     for wavelength in wavelengths:
         if wavelength != "OFF":
             output[index] = sysData[M]['AS7341']['current'][DACS[index]]
+            if output == 65535:
+                info_msg = ' Spectrometer at %s wavelength was saturated on device %s (%s)' % (
+                    wavelength, M, sysData[M]['DeviceID'])
+                print(str(datetime.now()) + info_msg)
+                application.logger.info(info_msg)
         index = index + 1
 
     return output
@@ -1058,13 +1174,13 @@ def CustomProgram(M):
     M = str(M)
     program = sysData[M]['Custom']['Program']
     # Subsequent few lines reads in external parameters from a file if you are using any.
-    fname = 'InputParameters_' + str(M) + '.csv'
+    fname = 'InputParameters_%s.csv' % M
 
     with open(fname, 'rb') as f:
         reader = csv.reader(f)
         listin = list(reader)
     Params = listin[0]
-    addTerminal(M, 'Running Program = ' + str(program) + ' on device ' + str(M))
+    addTerminal(M, 'Running Program = %s on device %s (%s) ' % (str(program), M, sysData[M]['DeviceID']))
 
     if program == "C1":  # Optogenetic Integral Control Program
         integral = 0.0  # Integral in integral controller
@@ -1092,13 +1208,14 @@ def CustomProgram(M):
 
         GreenThread = Thread(target=CustomLEDCycle, args=(M, 'LEDD', green))
         GreenThread.setDaemon(True)
-        GreenThread.start()
+        GreenThread.start();
         RedThread = Thread(target=CustomLEDCycle, args=(M, 'LEDF', red))
         RedThread.setDaemon(True)
-        RedThread.start()
+        RedThread.start();
         sysData[M]['Custom']['param1'] = green
         sysData[M]['Custom']['param2'] = red
-        addTerminal(M, 'Program = ' + str(program) + ' green= ' + str(green) + ' red= ' + str(red) + ' integral= ' + str(integral))
+        addTerminal(M, 'Program on %s (%s) = %s green= %s red= %s integral= %s'
+                    % (M, sysData[M]['DeviceID'], str(program), str(green), str(red), str(integral)))
 
     elif program == "C2":  # UV Integral Control Program
         integral = 0.0  # Integral in integral controller
@@ -1116,7 +1233,8 @@ def CustomProgram(M):
         sysData[M]['Custom']['param1'] = UV
         SetOutputTarget(M, 'UV', UV)
         SetOutputOn(M, 'UV', 1)
-        addTerminal(M, 'Program = ' + str(program) + ' UV= ' + str(UV) + ' integral= ' + str(integral))
+        addTerminal(M, 'Program on %s (%s)= %s UV= %s integral= %s'
+                    % (M, sysData[M]['DeviceID'], str(program), str(UV), str(integral)))
 
     elif program == "C3":  # UV Integral Control Program Mk 2
         integral = sysData[M]['Custom']['param2']  # Integral in integral controller
@@ -1145,7 +1263,8 @@ def CustomProgram(M):
         sysData[M]['Custom']['param1'] = UV
         SetOutputTarget(M, 'UV', UV)
         SetOutputOn(M, 'UV', 1)
-        addTerminal(M, 'Program = ' + str(program) + ' UV= ' + str(UV) + ' integral= ' + str(integral))
+        addTerminal(M, 'Program on %s (%s) = %s UV= %s integral= %s'
+                    % (M, sysData[M]['DeviceID'], str(program), str(UV), str(integral)))
     elif program == "C4":  # UV Integral Control Program Mk 4
         rategain = float(Params[0])
         timept = sysData[M]['Custom']['Status']  # This is the timestep as we follow in minutes
@@ -1170,7 +1289,8 @@ def CustomProgram(M):
             iters = (timept // timelength)
             Dose0 = float(Params[0])
             Dose = Dose0 * (2.0 ** float(iters))  # UV Dose, in terms of amount of time UV should be left on at 1.0 intensity.
-            print(str(datetime.now()) + ' Gave dose ' + str(Dose) + " at iteration " + str(iters) + " on device " + str(M))
+            addTerminal(M, 'Gave dose %s at iteration %s on device %s (%s)'
+                        % (str(Dose), str(iters), M, sysData[M]['DeviceID']))
 
             if Dose < 30.0:
                 powerlvl = Dose / 30.0
@@ -1198,7 +1318,8 @@ def CustomProgram(M):
 
             Dose0 = float(Params[0])
             Dose = Dose0 * (2.0 ** float(iters))  # UV Dose, in terms of amount of time UV should be left on at 1.0 intensity.
-            print(str(datetime.now()) + ' Gave dose ' + str(Dose) + " at iteration " + str(iters) + " on device " + str(M))
+            addTerminal(M, 'Gave dose %s at iteration %s on device %s (%s)'
+                        % (str(Dose), str(iters), M, sysData[M]['DeviceID']))
 
             if Dose < 30.0:
                 powerlvl = Dose / 30.0
@@ -1295,7 +1416,7 @@ def CharacteriseDevice2(M):
                  'CLEAR': []},
         'LASER650': {'nm410': [], 'nm440': [], 'nm470': [], 'nm510': [], 'nm550': [], 'nm583': [], 'nm620': [],
                      'nm670': [], 'CLEAR': []},
-        }
+    }
 
     print('Got in!')
     bands = ['nm410', 'nm440', 'nm470', 'nm510', 'nm550', 'nm583', 'nm620', 'nm670', 'CLEAR']
@@ -1314,10 +1435,11 @@ def CharacteriseDevice2(M):
             print(item + ' ' + str(power))
             for band in bands:
                 result[item][band].append(int(sysData[M]['AS7341']['spectrum'][band]))
-            addTerminal(M, 'Measured Item = ' + str(item) + ' at power ' + str(power))
+            addTerminal(M, 'Measured Item on %s (%s) = %s at power %s'
+                        % (M, sysData[M]['DeviceID'], str(item), str(power)))
             time.sleep(0.05)
 
-    filename = 'characterisation_data_' + M + '.txt'
+    filename = 'characterisation_data_%s_%s.txt' % (M, sysData[M]['DeviceID'])
     f = open(filename, 'w')
     simplejson.dump(result, f)
     f.close()
@@ -1339,7 +1461,10 @@ def I2CCom(M, device, rw, hl, data1, data2, SMBUSFLAG):
 
     global sysDevices
     if sysData[M]['present'] == 0:  # Something stupid has happened in software if this is the case!
-        print(str(datetime.now()) + ' Trying to communicate with absent device - bug in software!. Disabling hardware and software!')
+        critical_msg = ' Trying to communicate with %s (%s) absent device - bug in software!. ' \
+                       'Disabling hardware and software!' % (M, sysData[M]['DeviceID'])
+        print(str(datetime.now()) + critical_msg)
+        application.logger.critical(critical_msg)
         sysItems['Watchdog']['ON'] = 0  # Basically this will crash all the electronics and the software.
         out = 0
         tries = -1
@@ -1358,20 +1483,32 @@ def I2CCom(M, device, rw, hl, data1, data2, SMBUSFLAG):
             check = (sysItems['Multiplexer']['device'].readRaw8())  # We check that the Multiplexer is indeed connected to the correct channel.
             if check == int(sysItems['Multiplexer'][M], 2):
                 tries = -1
+                application.logger.debug('Connection to mux on %s (%s) to channel %s has been established'
+                                         % (M, sysData[M]['DeviceID'], check))
             else:
                 tries = tries + 1
                 time.sleep(0.02)
-                print(str(datetime.now()) + ' Multiplexer didnt switch ' + str(tries) + " times on " + str(M))
+                warn_msg = ' Multiplexer didnt switch %d times on %s (%s)' % (tries, M, sysData[M]['DeviceID'])
+                print(str(datetime.now()) + warn_msg)
+                application.logger.warning(warn_msg)
         except:  # If there is an error in the above.
             tries = tries + 1
             time.sleep(0.02)
-            print(str(datetime.now()) + ' Failed Multiplexer Comms ' + str(tries) + " times")
+            warn_msg = ' Failed Multiplexer Comms %d times on %s (%s)' % (tries, M, sysData[M]['DeviceID'])
+            print(str(datetime.now()) + warn_msg)
+            application.logger.warning(warn_msg)
+
             if tries > 2:
                 try:
                     sysItems['Multiplexer']['device'].write8(int(0x00), int(0x00))  # Disconnect multiplexer.
-                    print(str(datetime.now()) + 'Disconnected multiplexer on ' + str(M) + ', trying to connect again.')
+                    warn_msg = 'Disconnected multiplexer on %s (%s), trying to connect again.' \
+                               % (M, sysData[M]['DeviceID'])
+                    print(warn_msg)
+                    application.logger.warning(warn_msg)
                 except:
-                    print(str(datetime.now()) + 'Failed to recover multiplexer on device ' + str(M))
+                    warn_msg = 'Failed to recover multiplexer on device %s (%s)' % (M, sysData[M]['DeviceID'])
+                    print(warn_msg)
+                    application.logger.warning(warn_msg)
             if tries == 5 or tries == 10 or tries == 15:
                 toggleWatchdog()  # Flip the watchdog pin to ensure it is working.
                 GPIO.output('P8_15', GPIO.LOW)  # Flip the Multiplexer RESET pin. Note this reset function works on Control Board V1.2 and later.
@@ -1383,7 +1520,10 @@ def I2CCom(M, device, rw, hl, data1, data2, SMBUSFLAG):
         if tries > 20:  # If it has failed a number of times then likely something is seriously wrong, so we crash the software.
             sysItems['Watchdog']['ON'] = 0  # Basically this will crash all the electronics and the software.
             out = 0
-            print(str(datetime.now()) + 'Failed to communicate to Multiplexer 20 times. Disabling hardware and software!')
+            critical_msg = 'Failed to communicate to Multiplexer %d times on %s (%s).Disabling hardware and software!' \
+                           % (20, M, sysData[M]['DeviceID'])
+            print(critical_msg)
+            application.logger.critical(critical_msg)
             tries = -1
             os._exit(4)
 
@@ -1414,10 +1554,15 @@ def I2CCom(M, device, rw, hl, data1, data2, SMBUSFLAG):
             tries = tries + 1
 
             if device != "ThermometerInternal":
-                print(str(datetime.now()) + ' Failed ' + str(device) + ' comms ' + str(tries) + " times on device " + str(M))
+                warn_msg = 'Failed %s comms %d times on %s (%s)' % (device, tries, M, sysData[M]['DeviceID'])
+                print(str(datetime.now()) + warn_msg)
+                application.logger.warning(warn_msg)
                 time.sleep(0.02)
             if device == 'AS7341':
-                print(str(datetime.now()) + ' Failed  AS7341 in I2CCom while trying to send ' + str(data1) + " and " + str(data2))
+                warn_msg = ' Failed AS7341 in I2CCom while trying to send %s and %s on %s (%s)' \
+                           % (str(data1), str(data2), M, sysData[M]['DeviceID'])
+                print(str(datetime.now()) + warn_msg)
+                application.logger.warning(warn_msg)
                 out = -1
                 tries = -1
 
@@ -1425,11 +1570,14 @@ def I2CCom(M, device, rw, hl, data1, data2, SMBUSFLAG):
             out = 0
             sysData[M]['present'] = 0
             tries = -1
-        if tries > 10:  # In this case something else has gone wrong, so we panic.
+        if tries >= application.config['DEVICE_COMM_FAILURE_THRESHOLD']:  # In this case something else has gone wrong, so we panic.
             sysItems['Watchdog']['ON'] = 0  # Basically this will crash all the electronics and the software.
             out = 0
             sysData[M]['present'] = 0
-            print(str(datetime.now()) + 'Failed to communicate to a device 10 times. Disabling hardware and software!')
+            critical_msg = 'Failed to communicate to %s %d times on %s (%s). Disabling hardware and software!' \
+                           % (device, application.config['DEVICE_COMM_FAILURE_THRESHOLD'], M, sysData[M]['DeviceID'])
+            print(critical_msg)
+            application.logger.critical(critical_msg)
             tries = -1
             os._exit(4)
 
@@ -1438,7 +1586,9 @@ def I2CCom(M, device, rw, hl, data1, data2, SMBUSFLAG):
     try:
         sysItems['Multiplexer']['device'].write8(int(0x00), int(0x00))  # Disconnect multiplexer with each iteration.
     except:
-        print(str(datetime.now()) + 'Failed to disconnect multiplexer on device ' + str(M))
+        warn_msg = 'Failed to disconnect multiplexer on device %s (%s)' % (M, sysData[M]['DeviceID'])
+        print(warn_msg)
+        application.logger.warning(warn_msg)
 
     lock.release()  # Bus lock is released so next command can occur.
 
@@ -1464,7 +1614,7 @@ def CalibrateOD(M, item, value, value2):
             ODActual = 0
             print(str(datetime.now()) + "You put a negative OD into calibration! Setting it to 0")
 
-        raw = ((ODActual / a + (b / (2 * a)) ** 2) ** 0.5) - (b / (2 * a))  # THis is performing the inverse function of the quadratic OD calibration.
+        raw = ((ODActual / a + (b / (2 * a)) ** 2) ** 0.5) - (b / (2 * a))  # This is performing the inverse function of the quadratic OD calibration.
         OD0 = (10.0 ** raw) * ODRaw
         if OD0 < sysData[M][item]['min']:
             OD0 = sysData[M][item]['min']
@@ -1475,7 +1625,9 @@ def CalibrateOD(M, item, value, value2):
             print(str(datetime.now()) + 'OD calibration value seems too high?!')
 
         sysData[M][item]['target'] = OD0
-        print(str(datetime.now()) + "Calibrated OD")
+        info_msg = "Calibrated OD on %s (%s)" % (M, sysData[M]['DeviceID'])
+        print(info_msg)
+        application.logger.info(info_msg)
     elif device == 'LEDF':
         a = sysData[M]['OD0']['LEDFa']  # Retrieve the calibration factors for OD.
 
@@ -1491,7 +1643,7 @@ def CalibrateOD(M, item, value, value2):
         elif M == 'M3':
             CF = 1494.0
 
-        # raw=(ODActual)/a  #THis is performing the inverse function of the linear OD calibration.
+        # raw=(ODActual)/a  #This is performing the inverse function of the linear OD calibration.
         # OD0=ODRaw - raw*CF
         OD0 = ODRaw / ODActual
         print(OD0)
@@ -1504,7 +1656,9 @@ def CalibrateOD(M, item, value, value2):
             print('OD calibration value seems too high?!')
 
         sysData[M][item]['target'] = OD0
-        print("Calibrated OD")
+        info_msg = "Calibrated OD on %s (%s)" % (M, sysData[M]['DeviceID'])
+        print(info_msg)
+        application.logger.info(info_msg)
     elif device == 'LEDA':
         a = sysData[M]['OD0']['LEDAa']  # Retrieve the calibration factors for OD.
 
@@ -1520,7 +1674,7 @@ def CalibrateOD(M, item, value, value2):
         elif M == 'M3':
             CF = 522
 
-        # raw=(ODActual)/a  #THis is performing the inverse function of the linear OD calibration.
+        # raw=(ODActual)/a  #This is performing the inverse function of the linear OD calibration.
         # OD0=ODRaw - raw*CF
         OD0 = ODRaw / ODActual
         print(OD0)
@@ -1533,9 +1687,57 @@ def CalibrateOD(M, item, value, value2):
             print('OD calibration value seems too high?!')
 
         sysData[M][item]['target'] = OD0
-        print("Calibrated OD")
+        info_msg = "Calibrated OD on %s (%s)" % (M, sysData[M]['DeviceID'])
+        print(info_msg)
+        application.logger.info(info_msg)
 
     return '', 204
+
+
+@application.route("/SampleOD/<M>/<value>", methods=['POST'])
+def SampleOD(M, value):
+    """This function is called by ODSample button and gets its value from the SpectrophotometerOD field.
+
+    The input data is processed and a filename is created based on the input data (value), then a Thread is forked
+    to collect N number of OD readings defined by number_of_measurements.
+    """
+    global sysData
+    global sysItems
+    M = str(M)
+    OD0Actual = float(value)
+    if M == "0":
+        M = sysItems['UIDevice']
+
+    od_value = str(OD0Actual)
+    od_value = od_value.replace('.', '_')
+    print('Current actual OD: %s' % od_value)
+    filename = 'OD_Sampels_%s_%s_%s.csv' % (M, od_value, sysData[M]['DeviceID'])
+    number_of_measurements = 200
+    application.logger.info('collecting %d OD measurements to characterize %s (%s)' %
+                            (number_of_measurements, M, sysData[M]['DeviceID']))
+    th = Thread(target=collect_od_samples, args=(filename, number_of_measurements, M))
+    th.setDaemon(True)
+    th.start()
+    return '', 204
+
+
+def collect_od_samples(filename, number_of_measurements, M):
+    """This function collects number_of_measurements OD readings through the LASER650 instrument and writes them into a
+    file named by filename.
+
+     Args:
+        filename (str): the name of the file where the measurements get written
+        number_of_measurements (int): the number of measurements that are collected
+        M (str): relative name of the chibio collecting the OD measurements
+    Returns:
+        None
+    """
+    for idx in range(number_of_measurements):
+        out = GetTransmission(M, 'LASER650', ['CLEAR'], 1, 255)
+        print('%s %d: %f' % (M, idx, out[0]))
+        with open(filename, 'a') as f:
+            f.write("%s\n" % float(out[0]))
+        time.sleep(0.25)
 
 
 @application.route("/MeasureOD/<M>", methods=['POST'])
@@ -1557,9 +1759,11 @@ def MeasureOD(M):
             raw = math.log10(sysData[M]['OD0']['target'] / sysData[M]['OD0']['raw'])
             sysData[M]['OD']['current'] = raw * b + raw * raw * a
         except:
-            sysData[M]['OD']['current'] = 0
-            print(str(datetime.now()) + ' OD Measurement exception on ' + str(device))
-    elif device == 'LEDF':
+            sysData[M]['OD']['current'] = 0;
+            warn_msg = ' OD Measurement exception on %s (%s) device: %s' % (M, sysData[M]['DeviceID'], str(device))
+            print(str(datetime.now()) + warn_msg)
+            application.logger.warning(warn_msg)
+    elif (device == 'LEDF'):
         out = GetTransmission(M, 'LEDF', ['CLEAR'], 7, 255)
 
         sysData[M]['OD0']['raw'] = out[0]
@@ -1577,8 +1781,10 @@ def MeasureOD(M):
             raw = out[0] / sysData[M]['OD0']['target']
             sysData[M]['OD']['current'] = raw
         except:
-            sysData[M]['OD']['current'] = 0
-            print(str(datetime.now()) + ' OD Measurement exception on ' + str(device))
+            sysData[M]['OD']['current'] = 0;
+            warn_msg = ' OD Measurement exception on %s (%s) device: %s' % (M, sysData[M]['DeviceID'], str(device))
+            print(str(datetime.now()) + warn_msg)
+            application.logger.warning(warn_msg)
 
     elif device == 'LEDA':
         out = GetTransmission(M, 'LEDA', ['CLEAR'], 7, 255)
@@ -1599,8 +1805,10 @@ def MeasureOD(M):
             # sysData[M]['OD']['current']=raw*a
             sysData[M]['OD']['current'] = raw
         except:
-            sysData[M]['OD']['current'] = 0
-            print(str(datetime.now()) + ' OD Measurement exception on ' + str(device))
+            sysData[M]['OD']['current'] = 0;
+            warn_msg = ' OD Measurement exception on %s (%s) device: %s' % (M, sysData[M]['DeviceID'], str(device))
+            print(str(datetime.now()) + warn_msg)
+            application.logger.warning(warn_msg)
 
     return '', 204
 
@@ -1623,6 +1831,10 @@ def MeasureFP(M):
             else:  # This might happen if you try to measure in CLEAR whilst also having CLEAR as baseband!
                 sysData[M][FP]['Emit1'] = float(out[1])
                 sysData[M][FP]['Emit2'] = float(out[2])
+
+            # saving the unnormalized emissions
+            sysData[M][FP]['Emit1_raw'] = float(out[1])
+            sysData[M][FP]['Emit2_raw'] = float(out[2])
 
     return '', 204
 
@@ -1659,6 +1871,8 @@ def setPWM(M, device, channels, fraction, ConsecutiveFails):
     global sysItems
     global sysDevices
 
+    application.logger.debug('PWM command on %s (%s) device: %s channels: %s fractions: %s ConsecutiveFails: %d' %
+                             (M, sysData[M]['DeviceID'], device, channels, fraction, ConsecutiveFails))
     if sysDevices[M][device]['startup'] == 0:  # The following boots up the respective PWM device to the correct frequency. Potentially there is a bug here; if the device loses power after this code is run for the first time it may revert to default PWM frequency.
         I2CCom(M, device, 0, 8, 0x00, 0x10, 0)  # Turns off device. Also disables all-call functionality at bit 0 so it won't respond to address 0x70
         I2CCom(M, device, 0, 8, 0x04, 0xe6, 0)  # Sets SubADDR3 of the PWM chips to be 0x73 instead of 0x74 to avoid any potential collision with the multiplexer @ 0x74
@@ -1691,10 +1905,16 @@ def setPWM(M, device, channels, fraction, ConsecutiveFails):
 
         if CheckLow != (int(LowVals, 2)) or CheckHigh != (int(HighVals, 2)) or CheckHighON != int(0x00) or CheckLowON != int(0x00):  # We check to make sure it has been set to appropriate values.
             ConsecutiveFails = ConsecutiveFails + 1
-            print(str(datetime.now()) + ' Failed transmission test on ' + str(device) + ' ' + str(ConsecutiveFails) + ' times consecutively on device ' + str(M))
+            warn_msg = ' Failed transmission test on %s %d times consecutively on device %s (%s)' % \
+                       (str(device), ConsecutiveFails, M, sysData[M]['DeviceID'])
+            print(str(datetime.now()) + warn_msg)
+            application.logger.warning(warn_msg)
             if ConsecutiveFails > 10:
                 sysItems['Watchdog']['ON'] = 0  # Basically this will crash all the electronics and the software.
-                print(str(datetime.now()) + 'Failed to communicate to PWM 10 times. Disabling hardware and software!')
+                error_msg = 'Failed to communicate to PWM %d times on %s (%s). Disabling hardware and software!' \
+                            % (10, M, sysData[M]['DeviceID'])
+                print(error_msg)
+                application.logger.critical(error_msg)
                 os._exit(4)
             else:
                 time.sleep(0.1)
@@ -1713,9 +1933,10 @@ def csvData(M):
                   'pump_2_rate', 'pump_3_rate', 'pump_4_rate', 'media_vol', 'stirring_rate', 'LED_395nm_setpoint',
                   'LED_457nm_setpoint', 'LED_500nm_setpoint', 'LED_523nm_setpoint', 'LED_595nm_setpoint',
                   'LED_623nm_setpoint', 'LED_6500K_setpoint', 'laser_setpoint', 'LED_UV_int', 'FP1_base', 'FP1_emit1',
-                  'FP1_emit2', 'FP2_base', 'FP2_emit1', 'FP2_emit2', 'FP3_base', 'FP3_emit1', 'FP3_emit2',
+                  'FP1_emit2', 'FP1_emit1_raw', 'FP1_emit2_raw', 'FP2_base', 'FP2_emit1', 'FP2_emit2', 'FP2_emit1_raw',
+                  'FP2_emit2_raw', 'FP3_base', 'FP3_emit1', 'FP3_emit2', 'FP3_emit1_raw', 'FP3_emit2_raw',
                   'custom_prog_param1', 'custom_prog_param2', 'custom_prog_param3', 'custom_prog_status',
-                  'zigzag_target', 'growth_rate']
+                  'zigzag_target', 'growth_rate', 'od_raw']
 
     row = [sysData[M]['time']['record'][-1],
            sysData[M]['OD']['record'][-1],
@@ -1741,8 +1962,10 @@ def csvData(M):
             row = row + [sysData[M][FP]['Base']]
             row = row + [sysData[M][FP]['Emit1']]
             row = row + [sysData[M][FP]['Emit2']]
+            row = row + [sysData[M][FP]['Emit1_raw']]
+            row = row + [sysData[M][FP]['Emit2_raw']]
         else:
-            row = row + ([0.0, 0.0, 0.0])
+            row = row + ([0.0, 0.0, 0.0, 0.0, 0.0])
 
     row = row + [sysData[M]['Custom']['param1'] * float(sysData[M]['Custom']['ON'])]
     row = row + [sysData[M]['Custom']['param2'] * float(sysData[M]['Custom']['ON'])]
@@ -1750,6 +1973,7 @@ def csvData(M):
     row = row + [sysData[M]['Custom']['Status'] * float(sysData[M]['Custom']['ON'])]
     row = row + [sysData[M]['Zigzag']['target'] * float(sysData[M]['Zigzag']['ON'])]
     row = row + [sysData[M]['GrowthRate']['current'] * sysData[M]['Zigzag']['ON']]
+    row = row + [sysData[M]['OD0']['raw']]
 
     # Following can be uncommented if you are recording ALL spectra for e.g. biofilm experiments
     # bands=['nm410' ,'nm440','nm470','nm510','nm550','nm583','nm620','nm670','CLEAR','NIR']
@@ -1758,19 +1982,19 @@ def csvData(M):
     #   for band in bands:
     #       row=row+[sysData[M]['biofilm'][item][band]]
 
-    filename = sysData[M]['Experiment']['startTime'] + '_' + M + '_data' + '.csv'
-    filename = filename.replace(":", "_")
+    if len(row) != len(fieldnames):
+        raise ValueError('CSV_WRITER: mismatch between column num and header num')
+
+    filename = '%s/%s_data.csv' \
+               % (application.config['DATA_DIR'], sysData[M]['Experiment']['experimentID'])
 
     lock.acquire()  # We are avoiding writing to a file at the same time as we do digital communications, since it might potentially cause the computer to lag and consequently data transfer to fail.
     if os.path.isfile(filename) is False:  # Only if we are starting a fresh file
-        if len(row) == len(fieldnames):  # AND the fieldnames match up with what is being written.
-            with open(filename, 'a') as csvFile:
-                writer = csv.writer(csvFile)
-                writer.writerow(fieldnames)
-        else:
-            print('CSV_WRITER: mismatch between column num and header num')
+        with open(filename, 'a') as csvFile:
+            writer = csv.writer(csvFile)
+            writer.writerow(fieldnames)
 
-    with open(filename, 'a') as csvFile:  # Here we append the new data to our CSV file.
+    with open(filename, 'a') as csvFile:  # Here we append the above row to our CSV file.
         writer = csv.writer(csvFile)
         writer.writerow(row)
     csvFile.close()
@@ -2003,12 +2227,19 @@ def ExperimentStartStop(M, value):
     if value and (sysData[M]['Experiment']['ON'] == 0):
 
         sysData[M]['Experiment']['ON'] = 1
-        addTerminal(M, 'Experiment Started')
+        addTerminal(M, 'Experiment on %s (%s) Started' % (M, sysData[M]['DeviceID']))
 
         if sysData[M]['Experiment']['cycles'] == 0:
             now = datetime.now()
             timeString = now.strftime("%Y-%m-%d %H:%M:%S")
             sysData[M]['Experiment']['startTime'] = timeString
+            sysData[M]['Experiment']['experimentID'] = '%s_%s_%s_%s' % \
+                                                       (application.config['BEAGLEBONE_NAME'],
+                                                        sysData[M]['Experiment']['startTime'].replace(":", "_"),
+                                                        M,
+                                                        sysData[M]['DeviceID'])
+            application.logger.info('Experiment ID: %s has been assign to %s (%s)' %
+                                    (sysData[M]['Experiment']['experimentID'], M, sysData[M]['DeviceID']))
             sysData[M]['Experiment']['startTimeRaw'] = now
 
         sysData[M]['Pump1']['direction'] = 1.0  # Sets pumps to go forward.
@@ -2019,12 +2250,12 @@ def ExperimentStartStop(M, value):
         SetOutputOn(M, 'Thermostat', 1)
         sysDevices[M]['Experiment'] = Thread(target=runExperiment, args=(M, 'placeholder'))
         sysDevices[M]['Experiment'].setDaemon(True)
-        sysDevices[M]['Experiment'].start()
+        sysDevices[M]['Experiment'].start();
 
     else:
         sysData[M]['Experiment']['ON'] = 0
         sysData[M]['OD']['ON'] = 0
-        addTerminal(M, 'Experiment Stopping at end of cycle')
+        addTerminal(M, 'Experiment on %s (%s) Stopping at end of cycle' % (M, sysData[M]['DeviceID']))
         SetOutputOn(M, 'Pump1', 0)
         SetOutputOn(M, 'Pump2', 0)
         SetOutputOn(M, 'Stir', 0)
@@ -2049,7 +2280,7 @@ def runExperiment(M, placeholder):
     elapsedTime = now - sysData[M]['Experiment']['startTimeRaw']
     elapsedTimeSeconds = round(elapsedTime.total_seconds(), 2)
     sysData[M]['Experiment']['cycles'] = sysData[M]['Experiment']['cycles'] + 1
-    addTerminal(M, 'Cycle ' + str(sysData[M]['Experiment']['cycles']) + ' Started')
+    addTerminal(M, 'Cycle %d on %s (%s) Started' % (sysData[M]['Experiment']['cycles'], M, sysData[M]['DeviceID']))
     CycleTime = sysData[M]['Experiment']['cycleTime']
 
     SetOutputOn(M, 'Stir', 0)  # Turning stirring off
@@ -2057,18 +2288,21 @@ def runExperiment(M, placeholder):
     if sysData[M]['Experiment']['ON'] == 0:
         turnEverythingOff(M)
         sysData[M]['Experiment']['cycles'] = sysData[M]['Experiment']['cycles'] - 1  # Cycle didn't finish, don't count it.
-        addTerminal(M, 'Experiment Stopped')
+        addTerminal(M, 'Experiment on %s (%s) Stopped' % (M, sysData[M]['DeviceID']))
         return
 
     sysData[M]['OD']['Measuring'] = 1  # Begin measuring - this flag is just to indicate that a measurement is currently being taken.
 
-    # We now measure OD 4 times and take the average to reduce noise when in auto mode!
+    # We now measure OD N times and take the average to reduce noise when in auto mode!
     ODV = 0.0
-    for i in [0, 1, 2, 3]:
+    for _ in range(0, application.config['NUMBER_OF_OD_MEASUREMENTS']):
         MeasureOD(M)
         ODV = ODV + sysData[M]['OD']['current']
         time.sleep(0.25)
-    sysData[M]['OD']['current'] = ODV / 4.0
+    sysData[M]['OD']['current'] = ODV / float(application.config['NUMBER_OF_OD_MEASUREMENTS'])
+    application.logger.info('raw OD was measured at %g (averaged from %d) on %s (%s)'
+                            % (sysData[M]['OD']['current'], application.config['NUMBER_OF_OD_MEASUREMENTS'],
+                               M, sysData[M]['DeviceID']))
 
     MeasureTemp(M, 'Internal')  # Measuring all temperatures
     MeasureTemp(M, 'External')
@@ -2103,7 +2337,7 @@ def runExperiment(M, placeholder):
     if sysData[M]['Custom']['ON'] == 1:  # Check if we have enabled custom programs
         CustomThread = Thread(target=CustomProgram, args=(M,))  # We run this in a thread in case we are doing something slow, we don't want to hang up the main l00p. The comma after M is to cast the args as a tuple to prevent it iterating over the thread M
         CustomThread.setDaemon(True)
-        CustomThread.start()
+        CustomThread.start();
 
     Pump2Ontime = sysData[M]['Experiment']['cycleTime'] * 1.05 * abs(sysData[M]['Pump2']['target']) * sysData[M]['Pump2']['ON'] + 0.5  # The amount of time Pump2 is going to be on for following RegulateOD above.
     time.sleep(Pump2Ontime)  # Pause here is to prevent output pumping happening at the same time as stirring.
@@ -2152,17 +2386,15 @@ def runExperiment(M, placeholder):
         TempStartTime = sysData[M]['Experiment']['startTimeRaw']
         sysData[M]['Experiment']['startTimeRaw'] = 0  # We had to set this to zero during the write operation since the system does not like writing data in such a format.
 
-        filename = sysData[M]['Experiment']['startTime'] + '_' + M + '.txt'
-        filename = filename.replace(":", "_")
-        f = open(filename, 'w')
-        simplejson.dump(sysData[M], f)
-        f.close()
+        filename = '%s/%s.txt' % (application.config['DATA_DIR'], sysData[M]['Experiment']['experimentID'])
+        with open(filename, 'w') as f:
+            simplejson.dump(sysData[M], f)
         sysData[M]['Experiment']['startTimeRaw'] = TempStartTime
     # Written
 
     if sysData[M]['Experiment']['ON'] == 0:
         turnEverythingOff(M)
-        addTerminal(M, 'Experiment Stopped')
+        addTerminal(M, 'Experiment on %s (%s) Stopped' % (M, sysData[M]['DeviceID']))
         return
 
     nowend = datetime.now()
@@ -2171,11 +2403,11 @@ def runExperiment(M, placeholder):
     sleeptime = CycleTime - elapsedTimeSeconds2
     if sleeptime < 0:
         sleeptime = 0
-        addTerminal(M, 'Experiment Cycle Time is too short!!!')
+        addTerminal(M, 'Experiment Cycle Time on %s (%s) is too short!!!' % (M, sysData[M]['DeviceID']))
 
     time.sleep(sleeptime)
     LightActuation(M, 0)  # Turn light actuation off if it is running.
-    addTerminal(M, 'Cycle ' + str(sysData[M]['Experiment']['cycles']) + ' Complete')
+    addTerminal(M, 'Cycle %d on %s (%s) Complete' % (sysData[M]['Experiment']['cycles'], M, sysData[M]['DeviceID']))
 
     # Now we run this function again if the automated experiment is still going.
     if sysData[M]['Experiment']['ON'] and sysData[M]['Experiment']['threadCount'] == currentThread:
@@ -2185,7 +2417,7 @@ def runExperiment(M, placeholder):
 
     else:
         turnEverythingOff(M)
-        addTerminal(M, 'Experiment Stopped')
+        addTerminal(M, 'Experiment on %s (%s) Stopped' % (M, sysData[M]['DeviceID']))
 
 
 if __name__ == '__main__':
@@ -2193,4 +2425,6 @@ if __name__ == '__main__':
     application.run(debug=True, threaded=True, host='0.0.0.0', port=5000)
 
 initialiseAll()
-print(str(datetime.now()) + ' Start Up Complete')
+info_msg = ' Start Up Complete'
+application.logger.info(info_msg)
+print(str(datetime.now()) + info_msg)
