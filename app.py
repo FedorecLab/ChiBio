@@ -1334,8 +1334,8 @@ def SetLightActuation(Excite):
     item = "Light"
     if sysData[M][item]['ON'] == 1:
         sysData[M][item]['ON'] = 0
-        SetOutputOn(M, sysData[M][item]['Excite'], 0)  # In case the current LED is on we need to make sure it turns off
-        return '', 204
+	    SetOutputOn(M, sysData[M][item]['Excite'], 0)  # In case the current LED is on we need to make sure it turns off
+        return ('', 204)
     else:
         sysData[M][item]['Excite'] = str(Excite)
         sysData[M][item]['ON'] = 1
@@ -1728,18 +1728,18 @@ def MeasureOD(M):
     if device == 'LASER650':
         out = GetTransmission(M, 'LASER650', ['CLEAR'], 1, 255)
         sysData[M]['OD0']['raw'] = float(out[0])
-
+    
         a = sysData[M]['OD0']['LASERa']  # Retrieve the calibration factors for OD.
-        b = sysData[M]['OD0']['LASERb']
-        try:
+        b = sysData[M]['OD0']['LASERb'] 
+        if abs(sysData[M]['OD0']['raw']) > 0.001: # avoid devision by 0
             raw = math.log10(sysData[M]['OD0']['target'] / sysData[M]['OD0']['raw'])
             sysData[M]['OD']['current'] = raw * b + raw * raw * a
-        except:
-            sysData[M]['OD']['current'] = 0;
-            warn_msg = ' OD Measurement exception on %s (%s) device: %s' % (M, sysData[M]['DeviceID'], str(device))
+        else:
+            sysData[M]['OD']['current'] = 0
+            warn_msg = ' OD Measurement close to 0 on %s (%s) device: %s' % (M, sysData[M]['DeviceID'], str(device))
             print(str(datetime.now()) + warn_msg)
             application.logger.warning(warn_msg)
-    elif (device == 'LEDF'):
+    elif device == 'LEDF':
         out = GetTransmission(M, 'LEDF', ['CLEAR'], 7, 255)
 
         sysData[M]['OD0']['raw'] = out[0]
