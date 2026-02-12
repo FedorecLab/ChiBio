@@ -24,6 +24,7 @@ from constants import (
     AS7341_CHANNELS,
     AS7341_DACS,
     AS7341_SPECTRUM_BANDS,
+    DEVICE_IDS,
     LED_DIRECT_PWM,
     LED_OUTPUTS,
     LED_OUTPUTS_BASE,
@@ -164,7 +165,7 @@ sysDevices = {'M0': {
 
 }}
 
-for M in ['M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7']:
+for M in DEVICE_IDS[1:]:
     sysData[M] = copy.deepcopy(sysData['M0'])
     sysDevices[M] = copy.deepcopy(sysDevices['M0'])
 
@@ -527,7 +528,7 @@ def initialiseAll():
     check_config_value(config_key='DATA_DIR', default_value='data')
     check_config_value(config_key='BEAGLEBONE_NAME', default_value='beaglebone')
 
-    for M in ['M0', 'M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7']:
+    for M in DEVICE_IDS:
         initialise(M)
     scanDevices("all")
 
@@ -572,7 +573,7 @@ def index():
     outputdata = sysData[sysItems['UIDevice']]
     # sending the current beaglebone's name to UI
     outputdata['beaglebone_name'] = application.config['BEAGLEBONE_NAME']
-    for M in ['M0', 'M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7']:
+    for M in DEVICE_IDS:
         if sysData[M]['present'] == 1:
             outputdata['presentDevices'][M] = 1
         else:
@@ -586,7 +587,7 @@ def getSysdata():
     global sysData
     global sysItems
     outputdata = sysData[sysItems['UIDevice']]
-    for M in ['M0', 'M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7']:
+    for M in DEVICE_IDS:
         if sysData[M]['present'] == 1:
             outputdata['presentDevices'][M] = 1
         else:
@@ -601,7 +602,7 @@ def changeDevice(M):
     global sysItems
     M = str(M)
     if sysData[M]['present'] == 1:
-        for Mb in ['M0', 'M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7']:
+        for Mb in DEVICE_IDS:
             sysData[Mb]['UIDevice'] = M
 
         sysItems['UIDevice'] = M
@@ -617,7 +618,7 @@ def scanDevices(which):
     which = str(which)
 
     if which == "all":
-        for M in ['M0', 'M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7']:
+        for M in DEVICE_IDS:
             sysData[M]['present'] = 1
             I2CCom(M, 'ThermometerInternal', 1, 16, 0x05, 0, 0)  # We arbitrarily poll the thermometer to see if anything is plugged in!
             sysData[M]['DeviceID'] = GetID(M)
