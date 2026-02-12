@@ -755,6 +755,17 @@ def SetOutputOn(M, item, force):
         return '', 204
 
 
+def get_ledv_contribution(M, led_item):
+    """Calculate LEDV's intensity contribution for LEDB or LEDI."""
+    if sysData[M]['LEDV']['target'] * float(sysData[M]['LEDV']['ON']) == 0:
+        return 0.0
+    if led_item == 'LEDB':
+        return sysData[M]['LEDV']['target'] * sysData[M]['LEDV']['ScaleFactor']
+    elif led_item == 'LEDI':
+        return sysData[M]['LEDV']['target']
+    return 0.0
+
+
 def SetOutput(M, item):
     # Here we actually do the digital communications required to set a given output. This function is called by
     # SetOutputOn above as required.
@@ -806,35 +817,22 @@ def SetOutput(M, item):
     elif item in LED_DIRECT_PWM:
         setPWM(M,'PWM',sysItems[item],sysData[M][item]['target']*float(sysData[M][item]['ON']),0)
     elif item in LED_VIRTUAL_COMPONENTS: #We must handle these differently in case they are simultaneously being used to mix with LEDV
-        if (sysData[M]['LEDV']['target']*float(sysData[M]['LEDV']['ON'])>0): #If LEDV is on, we need to make up the difference in these other LEDs.
-            # First determine what is the intensity for this LED required to maintain current LEDV level. Note we have alreayd checked that LEDV is on.
-            if (item=='LEDB'):
-                LEDV_Intensity = sysData[M]['LEDV']['target']*sysData[M]['LEDV']['ScaleFactor'] 
-            elif (item == 'LEDI'):
-                LEDV_Intensity = sysData[M]['LEDV']['target']
-            
-            NewIntensity = sysData[M][item]['target']*float(sysData[M][item]['ON']) + LEDV_Intensity #Add on whatever extra intensity is required to maintain LEDV level.
-            if (NewIntensity>1.0):
-                NewIntensity=1.0
-                
-            setPWM(M,'PWM',sysItems[item],NewIntensity,0)
-
-        else:
-            setPWM(M,'PWM',sysItems[item],sysData[M][item]['target']*float(sysData[M][item]['ON']),0)
+        ledv_contribution = get_ledv_contribution(M, item)
+        new_intensity = sysData[M][item]['target']*float(sysData[M][item]['ON']) + ledv_contribution
+        if new_intensity > 1.0:
+            new_intensity = 1.0
+        setPWM(M,'PWM',sysItems[item],new_intensity,0)
     elif (item=='LEDV'): #This is the virtual white LED which is made by combinng LEDB and LEDI
-        LEDB_Intensity = sysData[M]['LEDV']['target']*float(sysData[M]['LEDV']['ON'])*sysData[M]['LEDV']['ScaleFactor'] #This is the intensity of the blue we want mixed into our white light
-        LEDB_Intensity = LEDB_Intensity + sysData[M]['LEDB']['target']*float(sysData[M]['LEDB']['ON']) #This adds the intensity of the blue we already have on
+        ledb_intensity = get_ledv_contribution(M, 'LEDB') + sysData[M]['LEDB']['target']*float(sysData[M]['LEDB']['ON'])
+        ledi_intensity = get_ledv_contribution(M, 'LEDI') + sysData[M]['LEDI']['target']*float(sysData[M]['LEDI']['ON'])
+        
+        if ledb_intensity > 1.0:
+            ledb_intensity = 1.0
+        if ledi_intensity > 1.0:
+            ledi_intensity = 1.0
 
-        LEDI_Intensity = sysData[M]['LEDV']['target']*float(sysData[M]['LEDV']['ON']) #This is the intensity of the Lime, similar to above.
-        LEDI_Intensity = LEDI_Intensity + sysData[M]['LEDI']['target']*float(sysData[M]['LEDI']['ON']) 
-
-        if (LEDB_Intensity>1.0): #If we are exceeding the maximum intensity, we are going to force a saturation.
-            LEDB_Intensity=1.0
-        if (LEDI_Intensity>1.0):
-            LEDI_Intensity=1.0
-
-        setPWM(M,'PWM',sysItems['LEDB'],LEDB_Intensity,0)
-        setPWM(M,'PWM',sysItems['LEDI'],LEDI_Intensity,0)
+        setPWM(M,'PWM',sysItems['LEDB'],ledb_intensity,0)
+        setPWM(M,'PWM',sysItems['LEDI'],ledi_intensity,0)
         
     elif(item == 'LASER650'): #This is if we are setting the Laser
         
