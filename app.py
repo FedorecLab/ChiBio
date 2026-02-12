@@ -7,12 +7,10 @@ import time
 import math
 from flask import Flask, render_template, jsonify
 from threading import Thread, Lock
-import threading
 import numpy as np
 from datetime import datetime, date
 import Adafruit_GPIO.I2C as I2C
 import Adafruit_BBIO.GPIO as GPIO
-import time
 import serial
 import simplejson
 import copy
