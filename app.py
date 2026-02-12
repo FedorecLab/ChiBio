@@ -82,6 +82,41 @@ class SystemState:
     def device_ids(self):
         """Get list of all device IDs."""
         return list(self.data.keys())
+    
+    def get_item_data(self, device_id, item):
+        """Get the full data dict for a specific item on a device."""
+        return self.get_data(device_id).get(item, {})
+    
+    def get_item_value(self, device_id, item, key, default=None):
+        """Get a specific value from device item data (e.g., 'target', 'ON', 'max')."""
+        return self.get_item_data(device_id, item).get(key, default)
+    
+    def set_item_value(self, device_id, item, key, value):
+        """Set a specific value in device item data."""
+        if device_id in self.data and item in self.data[device_id]:
+            self.data[device_id][item][key] = value
+    
+    def get_target(self, device_id, item):
+        """Get the target value for an item."""
+        return self.get_item_value(device_id, item, 'target', 0.0)
+    
+    def get_on_state(self, device_id, item):
+        """Get the ON state for an item."""
+        return self.get_item_value(device_id, item, 'ON', 0)
+    
+    def get_effective_intensity(self, device_id, item):
+        """Calculate effective intensity: target * ON state."""
+        target = self.get_target(device_id, item)
+        on_state = float(self.get_on_state(device_id, item))
+        return target * on_state
+    
+    def get_device_item(self, device_id, item):
+        """Get device-specific item data (sysDevices pattern)."""
+        return self.get_device(device_id).get(item, {})
+    
+    def get_device_item_value(self, device_id, item, key, default=None):
+        """Get a specific value from device item (e.g., 'thread', 'threadCount')."""
+        return self.get_device_item(device_id, item).get(key, default)
 
 
 # Initialise data structures.
@@ -704,7 +739,7 @@ def SetFPMeasurement(item, Excite, Base, Emit1, Emit2, Gain):
     Gain = str(Gain)
     M = sysItems['UIDevice']
 
-    if sysData[M][FP]['ON'] == 1:
+    if sys_state.get_on_state(M, FP) == 1:
         sysData[M][FP]['ON'] = 0
         return '', 204
     else:
@@ -729,14 +764,18 @@ def SetOutputTarget(M, item, value):
     info_msg = " Set item: %s to value %s on %s (%s)" % (str(item), str(value), M, sysData[M]['DeviceID'])
     print(str(datetime.now()) + info_msg)
     application.logger.info(info_msg)
-    if value < sysData[M][item]['min']:
-        value = sysData[M][item]['min']
-    if value > sysData[M][item]['max']:
-        value = sysData[M][item]['max']
+    
+    # Clamp value to min/max range
+    min_val = sys_state.get_item_value(M, item, 'min', 0.0)
+    max_val = sys_state.get_item_value(M, item, 'max', 1.0)
+    if value < min_val:
+        value = min_val
+    if value > max_val:
+        value = max_val
 
     sysData[M][item]['target'] = value
 
-    if sysData[M][item]['ON'] == 1 and not (item == 'OD' or item == 'Thermostat'):  # Checking to see if our item is already running, in which case
+    if sys_state.get_on_state(M, item) == 1 and not (item == 'OD' or item == 'Thermostat'):  # Checking to see if our item is already running, in which case
         SetOutputOn(M, item, 0)  # we turn it off and on again to restart at new rate.
         SetOutputOn(M, item, 1)
     return '', 204
@@ -802,7 +841,7 @@ def SetOutput(M, item):
     if item == 'Stir':
         # Stirring is initiated at a high speed for a couple of seconds to prevent the stir motor from stalling
         # (e.g. if it is started at an initial power of 0.3)
-        if sysData[M][item]['target'] * float(sysData[M][item]['ON']) > 0:
+        if sys_state.get_effective_intensity(M, item) > 0:
             setPWM(M, 'PWM', sysItems[item], 1.0 * float(sysData[M][item]['ON']), 0)  # This line is to just get stirring started briefly.
             time.sleep(1.5)
 
@@ -840,10 +879,10 @@ def SetOutput(M, item):
         sysData[M]['Zigzag']['SwitchPoint']=sysData[M]['Experiment']['cycles']
     
     elif item in LED_DIRECT_PWM:
-        setPWM(M,'PWM',sysItems[item],sysData[M][item]['target']*float(sysData[M][item]['ON']),0)
+        setPWM(M,'PWM',sysItems[item],sys_state.get_effective_intensity(M, item),0)
     elif item in LED_VIRTUAL_COMPONENTS: #We must handle these differently in case they are simultaneously being used to mix with LEDV
         ledv_contribution = get_ledv_contribution(M, item)
-        new_intensity = sysData[M][item]['target']*float(sysData[M][item]['ON']) + ledv_contribution
+        new_intensity = sys_state.get_effective_intensity(M, item) + ledv_contribution
         if new_intensity > 1.0:
             new_intensity = 1.0
         setPWM(M,'PWM',sysItems[item],new_intensity,0)
@@ -861,7 +900,7 @@ def SetOutput(M, item):
         
     elif(item == 'LASER650'): #This is if we are setting the Laser
         
-        value=sysData[M][item]['target']*float(sysData[M][item]['ON']) 
+        value=sys_state.get_effective_intensity(M, item) 
         if (value==0):
             value=0
         else:
