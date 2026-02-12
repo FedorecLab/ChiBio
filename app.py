@@ -22,7 +22,15 @@ import collections
 import logging
 from logging.handlers import TimedRotatingFileHandler
 
-from constants import AS7341_CHANNELS, AS7341_DACS, LED_OUTPUTS, PUMPS
+from constants import (
+    AS7341_CHANNELS,
+    AS7341_DACS,
+    AS7341_SPECTRUM_BANDS,
+    LED_OUTPUTS,
+    LED_OUTPUTS_BASE,
+    LED_OUTPUTS_WITH_LASER,
+    PUMPS,
+)
 
 
 def check_config_value(config_key, default_value, critical=False):
@@ -524,7 +532,7 @@ def initialiseAll():
 
 def turnEverythingOff(M):
     # Function which turns off all actuation/hardware.
-     for LED in ['LEDA','LEDB','LEDC','LEDD','LEDE','LEDF','LEDG']:
+      for LED in LED_OUTPUTS_BASE:
         sysData[M][LED]['ON']=0
         
     sysData[M]['LASER650']['ON']=0
@@ -1479,10 +1487,10 @@ def CharacteriseDevice2(M):
     }
 
     print('Got in!')
-    bands = ['nm410', 'nm440', 'nm470', 'nm510', 'nm550', 'nm583', 'nm620', 'nm670', 'CLEAR']
+    bands = AS7341_SPECTRUM_BANDS
     powerlevels = [0, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
                    1.0]
-    items = ['LEDA', 'LEDB', 'LEDC', 'LEDD', 'LEDE', 'LEDF', 'LEDG', 'LASER650']
+    items = LED_OUTPUTS_BASE + ['LASER650']
     gains = ['x4', 'x4', 'x4', 'x4', 'x4', 'x4', 'x4', 'x1']
     gi = -1
     for item in items:
@@ -2015,7 +2023,7 @@ def csvData(M):
            sysData[M]['Pump4']['record'][-1],
            sysData[M]['Volume']['target'],
            sysData[M]['Stir']['target'] * sysData[M]['Stir']['ON'], ]
-    for LED in ['LEDA', 'LEDB', 'LEDC', 'LEDD', 'LEDE', 'LEDF', 'LEDG','LEDH','LEDI','LEDV', 'LASER650']:
+    for LED in LED_OUTPUTS_WITH_LASER:
         row = row + [sysData[M][LED]['target']]
     row = row + [sysData[M]['UV']['target'] * sysData[M]['UV']['ON']]
     for FP in ['FP1', 'FP2', 'FP3']:

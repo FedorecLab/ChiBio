@@ -1,15 +1,8 @@
-LED_OUTPUTS = [
-    'LEDA',
-    'LEDB',
-    'LEDC',
-    'LEDD',
-    'LEDE',
-    'LEDF',
-    'LEDG',
-    'LEDH',
-    'LEDI',
-    'LEDV',
-]
+LED_OUTPUTS_BASE = ['LEDA', 'LEDB', 'LEDC', 'LEDD', 'LEDE', 'LEDF', 'LEDG']
+
+LED_OUTPUTS = LED_OUTPUTS_BASE + ['LEDH', 'LEDI', 'LEDV']
+
+LED_OUTPUTS_WITH_LASER = LED_OUTPUTS + ['LASER650']
 
 PUMPS = ['Pump1', 'Pump2', 'Pump3', 'Pump4']
 
@@ -31,3 +24,5 @@ AS7341_CHANNELS = [
 ]
 
 AS7341_DACS = ['ADC0', 'ADC1', 'ADC2', 'ADC3', 'ADC4', 'ADC5']
+
+AS7341_SPECTRUM_BANDS = AS7341_CHANNELS[:9]
