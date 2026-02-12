@@ -788,7 +788,7 @@ def SetOutput(M, item):
         sysDevices[M][item]['thread'].setDaemon(True)
         sysDevices[M][item]['thread'].start();
 
-    elif item == 'Pump1' or item == 'Pump2' or item == 'Pump3' or item == 'Pump4':
+    elif item in PUMPS:
         if sysData[M][item]['target'] == 0:
             sysData[M][item]['ON'] = 0
         sysDevices[M][item]['thread'] = Thread(target=PumpModulation, args=(M, item))
