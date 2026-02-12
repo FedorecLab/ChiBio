@@ -230,32 +230,34 @@ sysItems = {
 # This section of code is responsible for the watchdog circuit. The circuit is implemented in hardware on the control
 # computer, and requires the watchdog pin be toggled low->high each second, otherwise it will power down all connected
 # devices. This section is therefore critical to operation of the device.
-def runWatchdog():
-    # Watchdog timing function which continually runs in a thread.
-    global sysItems;
-    if sysItems['Watchdog']['ON'] == 1:
-        # sysItems['Watchdog']['thread']
-        toggleWatchdog()
-        time.sleep(0.15)
-        sysItems['Watchdog']['thread'] = Thread(target=runWatchdog, args=())
-        sysItems['Watchdog']['thread'].setDaemon(True)
-        sysItems['Watchdog']['thread'].start();
+class WatchdogService:
+    def __init__(self, sys_items, gpio, sleep_interval=0.15, toggle_delay=0.05):
+        self.sys_items = sys_items
+        self.gpio = gpio
+        self.sleep_interval = sleep_interval
+        self.toggle_delay = toggle_delay
 
+    def start(self):
+        self.sys_items['Watchdog']['thread'] = Thread(target=self._run, args=())
+        self.sys_items['Watchdog']['thread'].setDaemon(True)
+        self.sys_items['Watchdog']['thread'].start()
 
-def toggleWatchdog():
-    # Toggle the watchdog
-    global sysItems;
-    GPIO.output(sysItems['Watchdog']['pin'], GPIO.HIGH)
-    time.sleep(0.05)
-    GPIO.output(sysItems['Watchdog']['pin'], GPIO.LOW)
+    def _run(self):
+        if self.sys_items['Watchdog']['ON'] == 1:
+            self.toggle()
+            time.sleep(self.sleep_interval)
+            self.start()
 
+    def toggle(self):
+        self.gpio.output(self.sys_items['Watchdog']['pin'], self.gpio.HIGH)
+        time.sleep(self.toggle_delay)
+        self.gpio.output(self.sys_items['Watchdog']['pin'], self.gpio.LOW)
 
 GPIO.setup(sysItems['Watchdog']['pin'], GPIO.OUT)
 print(str(datetime.now()) + ' Starting watchdog')
 application.logger.info('Starting watchdog')
-sysItems['Watchdog']['thread'] = Thread(target=runWatchdog, args=())
-sysItems['Watchdog']['thread'].setDaemon(True)
-sysItems['Watchdog']['thread'].start();
+watchdog = WatchdogService(sysItems, GPIO)
+watchdog.start()
 GPIO.setup('P8_15', GPIO.OUT)  # This output connects to the RESET pin on the I2C Multiplexer.
 GPIO.output('P8_15', GPIO.HIGH)
 GPIO.setup('P8_17', GPIO.OUT)  # This output connects to D input of the D-Latch
@@ -1576,7 +1578,7 @@ def I2CCom(M, device, rw, hl, data1, data2, SMBUSFLAG):
                     print(warn_msg)
                     application.logger.warning(warn_msg)
             if tries == 5 or tries == 10 or tries == 15:
-                toggleWatchdog()  # Flip the watchdog pin to ensure it is working.
+                watchdog.toggle()  # Flip the watchdog pin to ensure it is working.
                 GPIO.output('P8_15', GPIO.LOW)  # Flip the Multiplexer RESET pin. Note this reset function works on Control Board V1.2 and later.
                 time.sleep(0.1)
                 GPIO.output('P8_15', GPIO.HIGH)
