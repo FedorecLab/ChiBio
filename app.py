@@ -24,9 +24,11 @@ from constants import (
     AS7341_CHANNELS,
     AS7341_DACS,
     AS7341_SPECTRUM_BANDS,
+    LED_DIRECT_PWM,
     LED_OUTPUTS,
     LED_OUTPUTS_BASE,
     LED_OUTPUTS_WITH_LASER,
+    LED_VIRTUAL_COMPONENTS,
     PUMPS,
 )
 
@@ -800,9 +802,9 @@ def SetOutput(M, item):
         sysData[M]['Zigzag']['target']=5.0
         sysData[M]['Zigzag']['SwitchPoint']=sysData[M]['Experiment']['cycles']
     
-    elif (item=='LEDA' or item=='LEDC' or item=='LEDD' or item=='LEDE' or item=='LEDF' or item=='LEDG' or item == 'LEDH'): 
+    elif item in LED_DIRECT_PWM:
         setPWM(M,'PWM',sysItems[item],sysData[M][item]['target']*float(sysData[M][item]['ON']),0)
-    elif (item=='LEDB' or item == 'LEDI'): #We must handle these differently in case they are simultaneously being used to mix with LEDV
+    elif item in LED_VIRTUAL_COMPONENTS: #We must handle these differently in case they are simultaneously being used to mix with LEDV
         if (sysData[M]['LEDV']['target']*float(sysData[M]['LEDV']['ON'])>0): #If LEDV is on, we need to make up the difference in these other LEDs.
             # First determine what is the intensity for this LED required to maintain current LEDV level. Note we have alreayd checked that LEDV is on.
             if (item=='LEDB'):
