@@ -22,6 +22,8 @@ import collections
 import logging
 from logging.handlers import TimedRotatingFileHandler
 
+from constants import AS7341_CHANNELS, AS7341_DACS, LED_OUTPUTS, PUMPS
+
 
 def check_config_value(config_key, default_value, critical=False):
     """It checks whether a given config parameter (key in the config dictionary) exists.
@@ -261,7 +263,7 @@ def initialise(M):
     global sysItems;
     global sysDevices
 
-    for LED in ['LEDA', 'LEDB', 'LEDC', 'LEDD', 'LEDE', 'LEDF', 'LEDG','LEDH','LEDI','LEDV']:
+    for LED in LED_OUTPUTS:
         sysData[M][LED]['target'] = sysData[M][LED]['default']
         sysData[M][LED]['ON'] = 0
 
@@ -317,7 +319,7 @@ def initialise(M):
     sysData[M][FP]['Emit2Record'] = []
     sysData[M][FP]['Gain'] = "x10"
 
-    for PUMP in ['Pump1', 'Pump2', 'Pump3', 'Pump4']:
+    for PUMP in PUMPS:
         sysData[M][PUMP]['default'] = 0.0;
         sysData[M][PUMP]['target'] = sysData[M][PUMP]['default']
         sysData[M][PUMP]['ON'] = 0
@@ -377,13 +379,10 @@ def initialise(M):
 
     sysDevices[M]['Thermostat']['threadCount'] = 0
 
-    channels = ['nm410', 'nm440', 'nm470', 'nm510', 'nm550', 'nm583', 'nm620', 'nm670', 'CLEAR', 'NIR', 'DARK',
-                'ExtGPIO', 'ExtINT', 'FLICKER']
-    for channel in channels:
+    for channel in AS7341_CHANNELS:
         sysData[M]['AS7341']['channels'][channel] = 0
         sysData[M]['AS7341']['spectrum'][channel] = 0
-    DACS = ['ADC0', 'ADC1', 'ADC2', 'ADC3', 'ADC4', 'ADC5']
-    for DAC in DACS:
+    for DAC in AS7341_DACS:
         sysData[M]['AS7341']['current'][DAC] = 0
 
     sysData[M]['ThermometerInternal']['current'] = 0.0
@@ -1156,9 +1155,7 @@ def GetLight(M, wavelengths, Gain, ISteps):
     # Runs spectrometer measurement and puts data into appropriate structure.
     global sysData
     M = str(M)
-    channels = ['nm410', 'nm440', 'nm470', 'nm510', 'nm550', 'nm583', 'nm620', 'nm670', 'CLEAR', 'NIR', 'DARK',
-                'ExtGPIO', 'ExtINT', 'FLICKER']
-    for channel in channels:
+    for channel in AS7341_CHANNELS:
         sysData[M]['AS7341']['channels'][channel] = 0  # First we set all measurement ADC indexes to zero.
     index = 1;
     for wavelength in wavelengths:
@@ -1182,16 +1179,14 @@ def GetLight(M, wavelengths, Gain, ISteps):
                 print(str(datetime.now()) + warn_msg)
                 application.logger.warning(warn_msg)
                 sysData[M]['AS7341']['current']['ADC0'] = 1
-                DACS = ['ADC1', 'ADC2', 'ADC3', 'ADC4', 'ADC5']
-                for DAC in DACS:
+                for DAC in AS7341_DACS[1:]:
                     sysData[M]['AS7341']['current'][DAC] = 0
 
     output = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     index = 0
-    DACS = ['ADC0', 'ADC1', 'ADC2', 'ADC3', 'ADC4', 'ADC5']
     for wavelength in wavelengths:
         if wavelength != "OFF":
-            output[index] = sysData[M]['AS7341']['current'][DACS[index]]
+            output[index] = sysData[M]['AS7341']['current'][AS7341_DACS[index]]
             if output == 65535:
                 info_msg = ' Spectrometer at %s wavelength was saturated on device %s (%s)' % (
                     wavelength, M, sysData[M]['DeviceID'])
