@@ -62,6 +62,28 @@ application.logger.addHandler(handler)
 
 lock = Lock()
 
+
+class SystemState:
+    """Thin wrapper grouping system state dictionaries for easier access."""
+    
+    def __init__(self, data, devices, items):
+        self.data = data
+        self.devices = devices
+        self.items = items
+    
+    def get_data(self, device_id):
+        """Get data dict for a specific device."""
+        return self.data.get(device_id, {})
+    
+    def get_device(self, device_id):
+        """Get device dict for a specific device."""
+        return self.devices.get(device_id, {})
+    
+    def device_ids(self):
+        """Get list of all device IDs."""
+        return list(self.data.keys())
+
+
 # Initialise data structures.
 
 # Sysdata is a structure created for each device and contains the setup / measured data related to that device during an
@@ -228,6 +250,9 @@ sysItems = {
         '0x13': {'A': 'FLICKER', 'B': 'NIR'},
     }
 }
+
+# Create system state wrapper (backwards compatible - globals still accessible)
+sys_state = SystemState(sysData, sysDevices, sysItems)
 
 
 # This section of code is responsible for the watchdog circuit. The circuit is implemented in hardware on the control
