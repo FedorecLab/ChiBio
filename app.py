@@ -821,12 +821,12 @@ def SetOutputOn(M, item, force):
 
 def get_ledv_contribution(M, led_item):
     """Calculate LEDV's intensity contribution for LEDB or LEDI."""
-    if sysData[M]['LEDV']['target'] * float(sysData[M]['LEDV']['ON']) == 0:
+    if sys_state.get_effective_intensity(M, 'LEDV') == 0:
         return 0.0
     if led_item == 'LEDB':
-        return sysData[M]['LEDV']['target'] * sysData[M]['LEDV']['ScaleFactor']
+        return sys_state.get_target(M, 'LEDV') * sysData[M]['LEDV']['ScaleFactor']
     elif led_item == 'LEDI':
-        return sysData[M]['LEDV']['target']
+        return sys_state.get_target(M, 'LEDV')
     return 0.0
 
 
@@ -842,29 +842,29 @@ def SetOutput(M, item):
         # Stirring is initiated at a high speed for a couple of seconds to prevent the stir motor from stalling
         # (e.g. if it is started at an initial power of 0.3)
         if sys_state.get_effective_intensity(M, item) > 0:
-            setPWM(M, 'PWM', sysItems[item], 1.0 * float(sysData[M][item]['ON']), 0)  # This line is to just get stirring started briefly.
+            setPWM(M, 'PWM', sysItems[item], 1.0 * float(sys_state.get_on_state(M, item)), 0)  # This line is to just get stirring started briefly.
             time.sleep(1.5)
 
-            if sysData[M][item]['target'] > 0.4 and sysData[M][item]['ON'] == 1:
-                setPWM(M, 'PWM', sysItems[item], 0.5 * float(sysData[M][item]['ON']), 0)  # This line is to just get stirring started briefly.
+            if sys_state.get_target(M, item) > 0.4 and sys_state.get_on_state(M, item) == 1:
+                setPWM(M, 'PWM', sysItems[item], 0.5 * float(sys_state.get_on_state(M, item)), 0)  # This line is to just get stirring started briefly.
                 time.sleep(0.75)
 
-            if sysData[M][item]['target'] > 0.8 and sysData[M][item]['ON'] == 1:
-                setPWM(M, 'PWM', sysItems[item], 0.7 * float(sysData[M][item]['ON']), 0)  # This line is to just get stirring started briefly.
+            if sys_state.get_target(M, item) > 0.8 and sys_state.get_on_state(M, item) == 1:
+                setPWM(M, 'PWM', sysItems[item], 0.7 * float(sys_state.get_on_state(M, item)), 0)  # This line is to just get stirring started briefly.
                 time.sleep(0.75)
 
-        setPWM(M, 'PWM', sysItems[item], sysData[M][item]['target'] * float(sysData[M][item]['ON']), 0)
+        setPWM(M, 'PWM', sysItems[item], sys_state.get_effective_intensity(M, item), 0)
     elif item == 'Heat':
-        setPWM(M, 'PWM', sysItems[item], sysData[M][item]['target'] * float(sysData[M][item]['ON']), 0)
+        setPWM(M, 'PWM', sysItems[item], sys_state.get_effective_intensity(M, item), 0)
     elif item == 'UV':
-        setPWM(M, 'PWM', sysItems[item], sysData[M][item]['target'] * float(sysData[M][item]['ON']), 0)
+        setPWM(M, 'PWM', sysItems[item], sys_state.get_effective_intensity(M, item), 0)
     elif item == 'Thermostat':
         sysDevices[M][item]['thread'] = Thread(target=Thermostat, args=(M, item))
         sysDevices[M][item]['thread'].setDaemon(True)
         sysDevices[M][item]['thread'].start();
 
     elif item in PUMPS:
-        if sysData[M][item]['target'] == 0:
+        if sys_state.get_target(M, item) == 0:
             sysData[M][item]['ON'] = 0
         sysDevices[M][item]['thread'] = Thread(target=PumpModulation, args=(M, item))
 
@@ -887,8 +887,8 @@ def SetOutput(M, item):
             new_intensity = 1.0
         setPWM(M,'PWM',sysItems[item],new_intensity,0)
     elif (item=='LEDV'): #This is the virtual white LED which is made by combinng LEDB and LEDI
-        ledb_intensity = get_ledv_contribution(M, 'LEDB') + sysData[M]['LEDB']['target']*float(sysData[M]['LEDB']['ON'])
-        ledi_intensity = get_ledv_contribution(M, 'LEDI') + sysData[M]['LEDI']['target']*float(sysData[M]['LEDI']['ON'])
+        ledb_intensity = get_ledv_contribution(M, 'LEDB') + sys_state.get_effective_intensity(M, 'LEDB')
+        ledi_intensity = get_ledv_contribution(M, 'LEDI') + sys_state.get_effective_intensity(M, 'LEDI')
         
         if ledb_intensity > 1.0:
             ledb_intensity = 1.0
@@ -947,7 +947,7 @@ def PumpModulation(M, item):
     while sysDevices[M][item]['active'] == 1:  # Idea is we will wait here if a previous thread on this pump is already running. Potentially all this 'active' business could be removed from this function.
         time.sleep(0.02)
 
-    if abs(sysData[M][item]['target'] * sysData[M][item]['ON']) != 1 and currentThread == sysDevices[M][item]['threadCount']:  # In all cases we turn things off to begin
+    if abs(sys_state.get_effective_intensity(M, item)) != 1 and currentThread == sysDevices[M][item]['threadCount']:  # In all cases we turn things off to begin
         sysDevices[M][item]['active'] = 1
         setPWM(MB, 'Pumps', sysItems[itemB]['In1'], 0.0 * float(sysData[M][item]['ON']), 0)
         setPWM(MB, 'Pumps', sysItems[itemB]['In2'], 0.0 * float(sysData[M][item]['ON']), 0)
@@ -1026,7 +1026,7 @@ def Thermostat(M, item):
     MPC = 0
     if MediaTemp > 0.0:
         Tdiff = CurrentTemp - MediaTemp
-        Pumping = sysData[M]['Pump1']['target'] * float(sysData[M]['Pump1']['ON']) * float(sysData[M]['OD']['ON'])
+        Pumping = sys_state.get_effective_intensity(M, 'Pump1') * float(sysData[M]['OD']['ON'])
         Gain = 2.5
         MPC = Gain * Tdiff * Pumping
 
@@ -2077,7 +2077,7 @@ def csvData(M):
            sysData[M]['OD']['targetrecord'][-1],
            sysData[M]['OD0']['target'],
            sysData[M]['Thermostat']['record'][-1],
-           sysData[M]['Heat']['target'] * float(sysData[M]['Heat']['ON']),
+           sys_state.get_effective_intensity(M, 'Heat'),
            sysData[M]['ThermometerInternal']['record'][-1],
            sysData[M]['ThermometerExternal']['record'][-1],
            sysData[M]['ThermometerIR']['record'][-1],
@@ -2087,10 +2087,10 @@ def csvData(M):
            sysData[M]['Pump3']['record'][-1],
            sysData[M]['Pump4']['record'][-1],
            sysData[M]['Volume']['target'],
-           sysData[M]['Stir']['target'] * sysData[M]['Stir']['ON'], ]
+           sys_state.get_effective_intensity(M, 'Stir'), ]
     for LED in LED_OUTPUTS_WITH_LASER:
         row = row + [sysData[M][LED]['target']]
-    row = row + [sysData[M]['UV']['target'] * sysData[M]['UV']['ON']]
+    row = row + [sys_state.get_effective_intensity(M, 'UV')]
     for FP in ['FP1', 'FP2', 'FP3']:
         if sysData[M][FP]['ON'] == 1:
             row = row + [sysData[M][FP]['Base']]
@@ -2105,7 +2105,7 @@ def csvData(M):
     row = row + [sysData[M]['Custom']['param2'] * float(sysData[M]['Custom']['ON'])]
     row = row + [sysData[M]['Custom']['param3'] * float(sysData[M]['Custom']['ON'])]
     row = row + [sysData[M]['Custom']['Status'] * float(sysData[M]['Custom']['ON'])]
-    row = row + [sysData[M]['Zigzag']['target'] * float(sysData[M]['Zigzag']['ON'])]
+    row = row + [sys_state.get_effective_intensity(M, 'Zigzag')]
     row = row + [sysData[M]['GrowthRate']['current'] * sysData[M]['Zigzag']['ON']]
     row = row + [sysData[M]['OD0']['raw']]
 
@@ -2484,16 +2484,16 @@ def runExperiment(M, placeholder):
     # Below stores all the results for plotting later
     sysData[M]['time']['record'].append(elapsedTimeSeconds)
     sysData[M]['OD']['record'].append(sysData[M]['OD']['current'])
-    sysData[M]['OD']['targetrecord'].append(sysData[M]['OD']['target'] * sysData[M]['OD']['ON'])
-    sysData[M]['Thermostat']['record'].append(sysData[M]['Thermostat']['target'] * float(sysData[M]['Thermostat']['ON']))
+    sysData[M]['OD']['targetrecord'].append(sys_state.get_effective_intensity(M, 'OD'))
+    sysData[M]['Thermostat']['record'].append(sys_state.get_effective_intensity(M, 'Thermostat'))
     sysData[M]['Light']['record'].append(float(sysData[M]['Light']['ON']))
     sysData[M]['ThermometerInternal']['record'].append(sysData[M]['ThermometerInternal']['current'])
     sysData[M]['ThermometerExternal']['record'].append(sysData[M]['ThermometerExternal']['current'])
     sysData[M]['ThermometerIR']['record'].append(sysData[M]['ThermometerIR']['current'])
-    sysData[M]['Pump1']['record'].append(sysData[M]['Pump1']['target'] * float(sysData[M]['Pump1']['ON']))
-    sysData[M]['Pump2']['record'].append(sysData[M]['Pump2']['target'] * float(sysData[M]['Pump2']['ON']))
-    sysData[M]['Pump3']['record'].append(sysData[M]['Pump3']['target'] * float(sysData[M]['Pump3']['ON']))
-    sysData[M]['Pump4']['record'].append(sysData[M]['Pump4']['target'] * float(sysData[M]['Pump4']['ON']))
+    sysData[M]['Pump1']['record'].append(sys_state.get_effective_intensity(M, 'Pump1'))
+    sysData[M]['Pump2']['record'].append(sys_state.get_effective_intensity(M, 'Pump2'))
+    sysData[M]['Pump3']['record'].append(sys_state.get_effective_intensity(M, 'Pump3'))
+    sysData[M]['Pump4']['record'].append(sys_state.get_effective_intensity(M, 'Pump4'))
     sysData[M]['GrowthRate']['record'].append(sysData[M]['GrowthRate']['current'] * float(sysData[M]['Zigzag']['ON']))
     for FP in ['FP1', 'FP2', 'FP3']:
         if sysData[M][FP]['ON'] == 1:
