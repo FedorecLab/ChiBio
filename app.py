@@ -53,12 +53,24 @@ application = Flask(__name__)
 application.config.from_pyfile('config/chibio_default.cfg', silent=True)
 application.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0  # Try this https://stackoverflow.com/questions/23112316/using-flask-how-do-i-modify-the-cache-control-header-for-all-output/23115561#23115561
 check_config_value(config_key='LOG_LEVEL', default_value='WARNING')
+check_config_value(config_key='LOG_TO_CONSOLE', default_value=True)
 log_level = logging.getLevelName(application.config['LOG_LEVEL'])
 application.logger.setLevel(level=log_level)
-handler = TimedRotatingFileHandler(filename='./log/chibio.log', when="w0", interval=1, backupCount=5)
+
+# File handler with rotation
+file_handler = TimedRotatingFileHandler(filename='./log/chibio.log', when="w0", interval=1, backupCount=5)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-handler.setFormatter(formatter)
-application.logger.addHandler(handler)
+file_handler.setFormatter(formatter)
+application.logger.addHandler(file_handler)
+
+# Console handler for real-time monitoring
+if application.config['LOG_TO_CONSOLE']:
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    console_handler.setFormatter(formatter)
+    application.logger.addHandler(console_handler)
+
+logger = application.logger  # Module-level reference for convenience
 
 lock = Lock()
 
@@ -309,8 +321,7 @@ class WatchdogService:
         self.gpio.output(self.sys_items['Watchdog']['pin'], self.gpio.LOW)
 
 GPIO.setup(sysItems['Watchdog']['pin'], GPIO.OUT)
-print(str(datetime.now()) + ' Starting watchdog')
-application.logger.info('Starting watchdog')
+logger.info('Starting watchdog')
 watchdog = WatchdogService(sysItems, GPIO)
 watchdog.start()
 GPIO.setup('P8_15', GPIO.OUT)  # This output connects to the RESET pin on the I2C Multiplexer.
@@ -555,15 +566,10 @@ def initialise(M):
         else:
             sysData[M]['Version']['LED']=1 #We have messed up somehow in this case and stuff isn't going to work well
             device_str = f" ERROR on {M}, this device has an unknown LED version. Defaulting to version 1."
-            print(str(datetime.now()) + device_str)
-            application.logger.info(device_str)
+            logger.error(device_str)
 
         device_str = f' Initialised {M}, LED Version: {sysData[M]['Version']['LED']}, Device ID: {sysData[M]['DeviceID']}'
-        print(str(datetime.now()) + device_str)
-        application.logger.info(device_str)
-
-    
-    
+        logger.info(device_str)
 
 def initialiseAll():
     # Initialisation function which runs at when software is started for the first time.
@@ -571,8 +577,7 @@ def initialiseAll():
     sysItems['FailCount'] = 0
     time.sleep(2.0)  # This wait is to allow the watchdog circuit to boot.
     check_config_value(config_key='CONTINUOUS_STIRRING', default_value=False)
-    print(str(datetime.now()) + ' Initialising devices')
-    application.logger.info('Initialising devices')
+    logger.info('Initialising devices')
 
     check_config_value(config_key='TWO_PUMPS_PER_DEVICE', default_value=False)
     check_config_value(config_key='NUMBER_OF_OD_MEASUREMENTS', default_value=4)
@@ -587,7 +592,7 @@ def initialiseAll():
 
 def turnEverythingOff(M):
     # Function which turns off all actuation/hardware.
-      for LED in LED_OUTPUTS_BASE:
+    for LED in LED_OUTPUTS_BASE:
         sysData[M][LED]['ON']=0
         
     sysData[M]['LASER650']['ON']=0
@@ -754,8 +759,7 @@ def SetOutputTarget(M, item, value):
     if M == "0":
         M = sysItems['UIDevice']
     info_msg = " Set item: %s to value %s on %s (%s)" % (str(item), str(value), M, sysData[M]['DeviceID'])
-    print(str(datetime.now()) + info_msg)
-    application.logger.info(info_msg)
+    logger.info(info_msg)
     
     # Clamp value to min/max range
     min_val = sys_state.get_item_value(M, item, 'min', 0.0)
@@ -1158,8 +1162,7 @@ def AS7341Read(M, Gain, ISteps, reset):
             sysData[M]['AS7341']['current']['ADC2'] == 65535 or sysData[M]['AS7341']['current']['ADC3'] == 65535 or
             sysData[M]['AS7341']['current']['ADC4'] == 65535 or sysData[M]['AS7341']['current']['ADC5'] == 65535):
         info_msg = ' Spectrometer measurement was saturated on device %s (%s)' % (M, sysData[M]['DeviceID'])
-        print(str(datetime.now()) + info_msg)  # Not sure if this saturation check above actually works correctly...
-        application.logger.info(info_msg)
+        logger.info(info_msg)  # Not sure if this saturation check above actually works correctly...
     return 0
 
 
@@ -1235,16 +1238,14 @@ def GetLight(M, wavelengths, Gain, ISteps):
         try:
             AS7341Read(M, Gain, ISteps, success)
             success = 2
-        except:
-            warn_msg = 'AS7341 measurement failed on %s (%s)' % (M, sysData[M]['DeviceID'])
-            print(str(datetime.now()) + warn_msg)
-            application.logger.warning(warn_msg)
+        except Exception as e:
+            warn_msg = 'AS7341 measurement failed on %s (%s): %s' % (M, sysData[M]['DeviceID'], e)
+            logger.warning(warn_msg, exc_info=True)
             success = success + 1
             if success == 2:
                 warn_msg = 'AS7341 measurement failed twice on %s (%s) setting unity values' \
                            % (M, sysData[M]['DeviceID'])
-                print(str(datetime.now()) + warn_msg)
-                application.logger.warning(warn_msg)
+                logger.warning(warn_msg)
                 sysData[M]['AS7341']['current']['ADC0'] = 1
                 for DAC in AS7341_DACS[1:]:
                     sysData[M]['AS7341']['current'][DAC] = 0
@@ -1257,8 +1258,7 @@ def GetLight(M, wavelengths, Gain, ISteps):
             if output == 65535:
                 info_msg = ' Spectrometer at %s wavelength was saturated on device %s (%s)' % (
                     wavelength, M, sysData[M]['DeviceID'])
-                print(str(datetime.now()) + info_msg)
-                application.logger.info(info_msg)
+                logger.info(info_msg)
         index = index + 1
 
     return output
@@ -1521,7 +1521,6 @@ def CharacteriseDevice(M, Program):
 def CharacteriseDevice2(M):
     global sysData
     global sysItems
-    print('In1')
     M = str(M)
     if M == "0":
         M = sysItems['UIDevice']
@@ -1545,7 +1544,6 @@ def CharacteriseDevice2(M):
                      'nm670': [], 'CLEAR': []},
     }
 
-    print('Got in!')
     bands = AS7341_SPECTRUM_BANDS
     powerlevels = [0, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
                    1.0]
@@ -1559,7 +1557,7 @@ def CharacteriseDevice2(M):
             SetOutputOn(M, item, 1)
             GetSpectrum(M, gains[gi])
             SetOutputOn(M, item, 0)
-            print(item + ' ' + str(power))
+            logger.debug('%s power level: %s', item, power)
             for band in bands:
                 result[item][band].append(int(sysData[M]['AS7341']['spectrum'][band]))
             addTerminal(M, 'Measured Item on %s (%s) = %s at power %s'
@@ -1590,8 +1588,7 @@ def I2CCom(M, device, rw, hl, data1, data2, SMBUSFLAG):
     if sysData[M]['present'] == 0:  # Something stupid has happened in software if this is the case!
         critical_msg = ' Trying to communicate with %s (%s) absent device - bug in software!. ' \
                        'Disabling hardware and software!' % (M, sysData[M]['DeviceID'])
-        print(str(datetime.now()) + critical_msg)
-        application.logger.critical(critical_msg)
+        logger.critical(critical_msg)
         sysItems['Watchdog']['ON'] = 0  # Basically this will crash all the electronics and the software.
         out = 0
         tries = -1
@@ -1616,41 +1613,36 @@ def I2CCom(M, device, rw, hl, data1, data2, SMBUSFLAG):
                 tries = tries + 1
                 time.sleep(0.02)
                 warn_msg = ' Multiplexer didnt switch %d times on %s (%s)' % (tries, M, sysData[M]['DeviceID'])
-                print(str(datetime.now()) + warn_msg)
-                application.logger.warning(warn_msg)
-        except:  # If there is an error in the above.
+                logger.warning(warn_msg)
+        except Exception as e:  # If there is an error in the above.
             tries = tries + 1
             time.sleep(0.02)
-            warn_msg = ' Failed Multiplexer Comms %d times on %s (%s)' % (tries, M, sysData[M]['DeviceID'])
-            print(str(datetime.now()) + warn_msg)
-            application.logger.warning(warn_msg)
+            warn_msg = ' Failed Multiplexer Comms %d times on %s (%s): %s' % (tries, M, sysData[M]['DeviceID'], e)
+            logger.warning(warn_msg)
 
             if tries > 2:
                 try:
                     sysItems['Multiplexer']['device'].write8(int(0x00), int(0x00))  # Disconnect multiplexer.
                     warn_msg = 'Disconnected multiplexer on %s (%s), trying to connect again.' \
                                % (M, sysData[M]['DeviceID'])
-                    print(warn_msg)
-                    application.logger.warning(warn_msg)
-                except:
-                    warn_msg = 'Failed to recover multiplexer on device %s (%s)' % (M, sysData[M]['DeviceID'])
-                    print(warn_msg)
-                    application.logger.warning(warn_msg)
+                    logger.warning(warn_msg)
+                except Exception as e:
+                    warn_msg = 'Failed to recover multiplexer on device %s (%s): %s' % (M, sysData[M]['DeviceID'], e)
+                    logger.warning(warn_msg)
             if tries == 5 or tries == 10 or tries == 15:
                 watchdog.toggle()  # Flip the watchdog pin to ensure it is working.
                 GPIO.output('P8_15', GPIO.LOW)  # Flip the Multiplexer RESET pin. Note this reset function works on Control Board V1.2 and later.
                 time.sleep(0.1)
                 GPIO.output('P8_15', GPIO.HIGH)
                 time.sleep(0.1)
-                print(str(datetime.now()) + 'Did multiplexer hard-reset on ' + str(M))
+                logger.warning('Did multiplexer hard-reset on %s', M)
 
         if tries > 20:  # If it has failed a number of times then likely something is seriously wrong, so we crash the software.
             sysItems['Watchdog']['ON'] = 0  # Basically this will crash all the electronics and the software.
             out = 0
             critical_msg = 'Failed to communicate to Multiplexer %d times on %s (%s).Disabling hardware and software!' \
                            % (20, M, sysData[M]['DeviceID'])
-            print(critical_msg)
-            application.logger.critical(critical_msg)
+            logger.critical(critical_msg)
             tries = -1
             os._exit(4)
 
@@ -1682,14 +1674,12 @@ def I2CCom(M, device, rw, hl, data1, data2, SMBUSFLAG):
 
             if device != "ThermometerInternal":
                 warn_msg = 'Failed %s comms %d times on %s (%s)' % (device, tries, M, sysData[M]['DeviceID'])
-                print(str(datetime.now()) + warn_msg)
-                application.logger.warning(warn_msg)
+                logger.warning(warn_msg)
                 time.sleep(0.02)
             if device == 'AS7341':
                 warn_msg = ' Failed AS7341 in I2CCom while trying to send %s and %s on %s (%s)' \
                            % (str(data1), str(data2), M, sysData[M]['DeviceID'])
-                print(str(datetime.now()) + warn_msg)
-                application.logger.warning(warn_msg)
+                logger.warning(warn_msg)
                 out = -1
                 tries = -1
 
@@ -1703,8 +1693,7 @@ def I2CCom(M, device, rw, hl, data1, data2, SMBUSFLAG):
             sysData[M]['present'] = 0
             critical_msg = 'Failed to communicate to %s %d times on %s (%s). Disabling hardware and software!' \
                            % (device, application.config['DEVICE_COMM_FAILURE_THRESHOLD'], M, sysData[M]['DeviceID'])
-            print(critical_msg)
-            application.logger.critical(critical_msg)
+            logger.critical(critical_msg)
             tries = -1
             os._exit(4)
 
@@ -1712,10 +1701,9 @@ def I2CCom(M, device, rw, hl, data1, data2, SMBUSFLAG):
 
     try:
         sysItems['Multiplexer']['device'].write8(int(0x00), int(0x00))  # Disconnect multiplexer with each iteration.
-    except:
-        warn_msg = 'Failed to disconnect multiplexer on device %s (%s)' % (M, sysData[M]['DeviceID'])
-        print(warn_msg)
-        application.logger.warning(warn_msg)
+    except Exception as e:
+        warn_msg = 'Failed to disconnect multiplexer on device %s (%s): %s' % (M, sysData[M]['DeviceID'], e)
+        logger.warning(warn_msg)
 
     lock.release()  # Bus lock is released so next command can occur.
 
@@ -1739,22 +1727,21 @@ def CalibrateOD(M, item, value, value2):
         b = sysData[M]['OD0']['LASERb']
         if ODActual < 0:
             ODActual = 0
-            print(str(datetime.now()) + "You put a negative OD into calibration! Setting it to 0")
+            logger.warning("You put a negative OD into calibration! Setting it to 0")
 
         raw = ((ODActual / a + (b / (2 * a)) ** 2) ** 0.5) - (b / (2 * a))  # This is performing the inverse function of the quadratic OD calibration.
         OD0 = (10.0 ** raw) * ODRaw
         if OD0 < sysData[M][item]['min']:
             OD0 = sysData[M][item]['min']
-            print(str(datetime.now()) + 'OD calibration value seems too low?!')
+            logger.warning('OD calibration value seems too low?!')
 
         if OD0 > sys_state.get_item_value(M, item, 'max', float('inf')):
             OD0 = sys_state.get_item_value(M, item, 'max')
-            print(str(datetime.now()) + 'OD calibration value seems too high?!')
+            logger.warning('OD calibration value seems too high?!')
 
         sys_state.set_item_value(M, item, 'target', OD0)
         info_msg = "Calibrated OD on %s (%s)" % (M, sysData[M]['DeviceID'])
-        print(info_msg)
-        application.logger.info(info_msg)
+        logger.info(info_msg)
     elif device == 'LEDF':
         a = sysData[M]['OD0']['LEDFa']  # Retrieve the calibration factors for OD.
 
@@ -1773,25 +1760,24 @@ def CalibrateOD(M, item, value, value2):
         # raw=(ODActual)/a  #This is performing the inverse function of the linear OD calibration.
         # OD0=ODRaw - raw*CF
         OD0 = ODRaw / ODActual
-        print(OD0)
+        logger.debug('OD0 calculation (LEDF) result: %s', OD0)
 
         if OD0 < sysData[M][item]['min']:
             OD0 = sys_state.get_item_value(M, item, 'min')
-            print('OD calibration value seems too low?!')
+            logger.warning('OD calibration value seems too low?!')
         if OD0 > sys_state.get_item_value(M, item, 'max', float('inf')):
             OD0 = sys_state.get_item_value(M, item, 'max')
-            print('OD calibration value seems too high?!')
+            logger.warning('OD calibration value seems too high?!')
 
         sys_state.set_item_value(M, item, 'target', OD0)
         info_msg = "Calibrated OD on %s (%s)" % (M, sysData[M]['DeviceID'])
-        print(info_msg)
-        application.logger.info(info_msg)
+        logger.info(info_msg)
     elif device == 'LEDA':
         a = sysData[M]['OD0']['LEDAa']  # Retrieve the calibration factors for OD.
 
         if ODActual < 0:
             ODActual = 0
-            print("You put a negative OD into calibration! Setting it to 0")
+            logger.warning("You put a negative OD into calibration! Setting it to 0")
         if M == 'M0':
             CF = 422
         elif M == 'M1':
@@ -1804,19 +1790,18 @@ def CalibrateOD(M, item, value, value2):
         # raw=(ODActual)/a  #This is performing the inverse function of the linear OD calibration.
         # OD0=ODRaw - raw*CF
         OD0 = ODRaw / ODActual
-        print(OD0)
+        logger.debug('OD0 calculation (LEDA) result: %s', OD0)
 
         if OD0 < sysData[M][item]['min']:
             OD0 = sys_state.get_item_value(M, item, 'min')
-            print('OD calibration value seems too low?!')
+            logger.warning('OD calibration value seems too low?!')
         if OD0 > sys_state.get_item_value(M, item, 'max', float('inf')):
             OD0 = sys_state.get_item_value(M, item, 'max')
-            print('OD calibration value seems too high?!')
+            logger.warning('OD calibration value seems too high?!')
 
         sys_state.set_item_value(M, item, 'target', OD0)
         info_msg = "Calibrated OD on %s (%s)" % (M, sysData[M]['DeviceID'])
-        print(info_msg)
-        application.logger.info(info_msg)
+        logger.info(info_msg)
 
     return '', 204
 
@@ -1837,7 +1822,7 @@ def SampleOD(M, value):
 
     od_value = str(OD0Actual)
     od_value = od_value.replace('.', '_')
-    print('Current actual OD: %s' % od_value)
+    logger.info('Current actual OD: %s', od_value)
     filename = 'OD_Sampels_%s_%s_%s.csv' % (M, od_value, sysData[M]['DeviceID'])
     number_of_measurements = 200
     application.logger.info('collecting %d OD measurements to characterize %s (%s)' %
@@ -1861,7 +1846,7 @@ def collect_od_samples(filename, number_of_measurements, M):
     """
     for idx in range(number_of_measurements):
         out = GetTransmission(M, 'LASER650', ['CLEAR'], 1, 255)
-        print('%s %d: %f' % (M, idx, out[0]))
+        logger.debug('%s %d: %f', M, idx, out[0])
         with open(filename, 'a') as f:
             f.write("%s\n" % float(out[0]))
         time.sleep(0.25)
@@ -1888,8 +1873,7 @@ def MeasureOD(M):
         else:
             sysData[M]['OD']['current'] = 0
             warn_msg = ' OD Measurement close to 0 on %s (%s) device: %s' % (M, sysData[M]['DeviceID'], str(device))
-            print(str(datetime.now()) + warn_msg)
-            application.logger.warning(warn_msg)
+            logger.warning(warn_msg)
     elif (device == 'LEDF'):
         out = GetTransmission(M, 'LEDF', ['CLEAR'], 7, 255)
 
@@ -1907,11 +1891,10 @@ def MeasureOD(M):
             # raw=out[0]/CF - sysData[M]['OD0']['target']/CF
             raw = out[0] / sysData[M]['OD0']['target']
             sysData[M]['OD']['current'] = raw
-        except:
+        except Exception as e:
             sysData[M]['OD']['current'] = 0;
-            warn_msg = ' OD Measurement exception on %s (%s) device: %s' % (M, sysData[M]['DeviceID'], str(device))
-            print(str(datetime.now()) + warn_msg)
-            application.logger.warning(warn_msg)
+            warn_msg = ' OD Measurement exception on %s (%s) device: %s, error: %s' % (M, sysData[M]['DeviceID'], str(device), e)
+            logger.warning(warn_msg, exc_info=True)
 
     elif device == 'LEDA':
         out = GetTransmission(M, 'LEDA', ['CLEAR'], 7, 255)
@@ -1931,11 +1914,10 @@ def MeasureOD(M):
             raw = out[0] / sysData[M]['OD0']['target']
             # sysData[M]['OD']['current']=raw*a
             sysData[M]['OD']['current'] = raw
-        except:
+        except Exception as e:
             sysData[M]['OD']['current'] = 0;
-            warn_msg = ' OD Measurement exception on %s (%s) device: %s' % (M, sysData[M]['DeviceID'], str(device))
-            print(str(datetime.now()) + warn_msg)
-            application.logger.warning(warn_msg)
+            warn_msg = ' OD Measurement exception on %s (%s) device: %s, error: %s' % (M, sysData[M]['DeviceID'], str(device), e)
+            logger.warning(warn_msg, exc_info=True)
 
     return '', 204
 
@@ -2034,14 +2016,12 @@ def setPWM(M, device, channels, fraction, ConsecutiveFails):
             ConsecutiveFails = ConsecutiveFails + 1
             warn_msg = ' Failed transmission test on %s %d times consecutively on device %s (%s)' % \
                        (str(device), ConsecutiveFails, M, sysData[M]['DeviceID'])
-            print(str(datetime.now()) + warn_msg)
-            application.logger.warning(warn_msg)
+            logger.warning(warn_msg)
             if ConsecutiveFails > 10:
                 sysItems['Watchdog']['ON'] = 0  # Basically this will crash all the electronics and the software.
                 error_msg = 'Failed to communicate to PWM %d times on %s (%s). Disabling hardware and software!' \
                             % (10, M, sysData[M]['DeviceID'])
-                print(error_msg)
-                application.logger.critical(error_msg)
+                logger.critical(error_msg)
                 os._exit(4)
             else:
                 time.sleep(0.1)
@@ -2290,8 +2270,8 @@ def RegulateOD(M):
     if sysData[M]['Zigzag']['ON'] == 1:  # If the zigzag growth estimation is running then we change OD setpoint appropriately.
         try:
             sysData[M]['OD']['target'] = TargetOD
-        except:
-            print('Somehow you managed to activate Zigzag at a sub-optimal time')
+        except Exception as e:
+            logger.debug('Zigzag activation timing issue: %s', e)
             # Do nothing
 
     return
@@ -2555,5 +2535,4 @@ else:
     initialiseAll()
 
 info_msg = ' Start Up Complete'
-application.logger.info(info_msg)
-print(str(datetime.now()) + info_msg)
+logger.info(info_msg)
