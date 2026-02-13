@@ -25,6 +25,24 @@ class LoggerContext:
         self._logger = logger
         self._sys_data = sys_data
 
+    def log(self, level, msg, *args, **kwargs):
+        self._logger.log(level, msg, *args, **kwargs)
+
+    def debug(self, msg, *args, **kwargs):
+        self._logger.debug(msg, *args, **kwargs)
+
+    def info(self, msg, *args, **kwargs):
+        self._logger.info(msg, *args, **kwargs)
+
+    def warning(self, msg, *args, **kwargs):
+        self._logger.warning(msg, *args, **kwargs)
+
+    def error(self, msg, *args, **kwargs):
+        self._logger.error(msg, *args, **kwargs)
+
+    def critical(self, msg, *args, **kwargs):
+        self._logger.critical(msg, *args, **kwargs)
+
     def _format_device_message(self, device_id, message):
         try:
             device_name = self._sys_data[device_id].get('DeviceID', 'unknown')

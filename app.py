@@ -43,12 +43,12 @@ def check_config_value(config_key, default_value, critical=False):
     if config_key not in application.config.keys():
         if critical:
             err_msg = f'config value for {config_key} was not found, it must be set for safe operations'
-            application.logger.error(err_msg)
+            logger_ctx.error(err_msg)
             raise ValueError(err_msg)
         application.config[config_key] = default_value
-        application.logger.warning(f'config value {config_key} was not found and set to default: {default_value}')
+        logger_ctx.warning(f'config value {config_key} was not found and set to default: {default_value}')
     else:
-        application.logger.info(f'config found: {config_key}={application.config[config_key]}')
+        logger_ctx.info(f'config found: {config_key}={application.config[config_key]}')
 
 
 def load_device_config(config_file):
@@ -346,7 +346,7 @@ class WatchdogService:
         self.gpio.output(self.sys_items['Watchdog']['pin'], self.gpio.LOW)
 
 GPIO.setup(sysItems['Watchdog']['pin'], GPIO.OUT)
-logger.info('Starting watchdog')
+logger_ctx.info('Starting watchdog')
 watchdog = WatchdogService(sysItems, GPIO)
 watchdog.start()
 GPIO.setup('P8_15', GPIO.OUT)  # This output connects to the RESET pin on the I2C Multiplexer.
@@ -543,7 +543,7 @@ def initialise(M):
                 sysData[M]['OD0']['LASERb'] = float(fit_data.LASERb)
                 sysData[M]['DeviceName'] = fit_data.name
             except KeyError:
-                logger.warning('config for device %s was not found!', sysData[M]['DeviceID'])
+                logger_ctx.warning('config for device %s was not found!', sysData[M]['DeviceID'])
         turnEverythingOff(M)
 
         V1_Present=0
@@ -581,10 +581,10 @@ def initialise(M):
         else:
             sysData[M]['Version']['LED']=1 #We have messed up somehow in this case and stuff isn't going to work well
             device_str = f" ERROR on {M}, this device has an unknown LED version. Defaulting to version 1."
-            logger.error(device_str)
+            logger_ctx.error(device_str)
 
         device_str = f' Initialised {M}, LED Version: {sysData[M]['Version']['LED']}, Device ID: {sysData[M]['DeviceID']}'
-        logger.info(device_str)
+        logger_ctx.info(device_str)
 
 def initialiseAll():
     # Initialisation function which runs at when software is started for the first time.
@@ -592,7 +592,7 @@ def initialiseAll():
     sysItems['FailCount'] = 0
     time.sleep(2.0)  # This wait is to allow the watchdog circuit to boot.
     check_config_value(config_key='CONTINUOUS_STIRRING', default_value=False)
-    logger.info('Initialising devices')
+    logger_ctx.info('Initialising devices')
 
     check_config_value(config_key='TWO_PUMPS_PER_DEVICE', default_value=False)
     check_config_value(config_key='NUMBER_OF_OD_MEASUREMENTS', default_value=4)
@@ -721,7 +721,7 @@ def GetID(M):
 def addTerminal(M, strIn):
     # Responsible for adding a new line to the terminal in the UI.
     global sysData
-    application.logger.info(strIn)
+    logger_ctx.info(strIn)
     now = datetime.now()
     timeString = now.strftime("%Y-%m-%d %H:%M:%S ")
     sysData[M]['Terminal']['text'] = timeString + ' - ' + str(strIn) + '</br>' + sysData[M]['Terminal']['text']
@@ -774,7 +774,7 @@ def SetOutputTarget(M, item, value):
     if M == "0":
         M = sysItems['UIDevice']
     info_msg = f" Set item: {str(item)} to value {str(value)} on {M} ({sysData[M]['DeviceID']})"
-    logger.info(info_msg)
+    logger_ctx.info(info_msg)
     
     # Clamp value to min/max range
     min_val = sys_state.get_item_value(M, item, 'min', 0.0)
@@ -802,7 +802,7 @@ def SetOutputOn(M, item, force):
     M = str(M)
     if M == "0":
         M = sysItems['UIDevice']
-    application.logger.info(f'device: {item} on {M} ({sysData[M]["DeviceID"]}), output is  {force} ')
+    logger_ctx.info(f'device: {item} on {M} ({sysData[M]["DeviceID"]}), output is  {force} ')
     # The first statements are to force it on or off it the command is called in force mode (force implies it sets it to
     # a given state, regardless of what it is currently in)
     if force == 1:
@@ -1177,7 +1177,7 @@ def AS7341Read(M, Gain, ISteps, reset):
             sysData[M]['AS7341']['current']['ADC2'] == 65535 or sysData[M]['AS7341']['current']['ADC3'] == 65535 or
             sysData[M]['AS7341']['current']['ADC4'] == 65535 or sysData[M]['AS7341']['current']['ADC5'] == 65535):
         info_msg = f' Spectrometer measurement was saturated on device {M} ({sysData[M]["DeviceID"]})'
-        logger.info(info_msg)  # Not sure if this saturation check above actually works correctly...
+        logger_ctx.info(info_msg)  # Not sure if this saturation check above actually works correctly...
     return 0
 
 
@@ -1255,7 +1255,7 @@ def GetLight(M, wavelengths, Gain, ISteps):
             success = 2
         except Exception as e:
             logger_ctx.log_comm_event(M, 'AS7341', 'measurement failed', str(e), level=logging.WARNING)
-            logger.warning(f'AS7341 measurement exception: {e}', exc_info=True)
+            logger_ctx.warning(f'AS7341 measurement exception: {e}', exc_info=True)
             success = success + 1
             if success == 2:
                 logger_ctx.log_device_event(logging.WARNING, M, 'AS7341 measurement failed twice, setting unity values')
@@ -1270,7 +1270,7 @@ def GetLight(M, wavelengths, Gain, ISteps):
             output[index] = sysData[M]['AS7341']['current'][AS7341_DACS[index]]
             if output == 65535:
                 info_msg = f' Spectrometer at {wavelength} wavelength was saturated on device {M} ({sysData[M]["DeviceID"]})'
-                logger.info(info_msg)
+                logger_ctx.info(info_msg)
         index = index + 1
 
     return output
@@ -1569,7 +1569,7 @@ def CharacteriseDevice2(M):
             SetOutputOn(M, item, 1)
             GetSpectrum(M, gains[gi])
             SetOutputOn(M, item, 0)
-            logger.debug('%s power level: %s', item, power)
+            logger_ctx.debug('%s power level: %s', item, power)
             for band in bands:
                 result[item][band].append(int(sysData[M]['AS7341']['spectrum'][band]))
             addTerminal(M, 'Measured Item on %s (%s) = %s at power %s'
@@ -1616,7 +1616,7 @@ def I2CCom(M, device, rw, hl, data1, data2, SMBUSFLAG):
             check = (sysItems['Multiplexer']['device'].readRaw8())  # We check that the Multiplexer is indeed connected to the correct channel.
             if check == int(sysItems['Multiplexer'][M], 2):
                 tries = -1
-                application.logger.debug('Connection to mux on %s (%s) to channel %s has been established'
+                logger_ctx.debug('Connection to mux on %s (%s) to channel %s has been established'
                                          % (M, sysData[M]['DeviceID'], check))
             else:
                 tries = tries + 1
@@ -1639,7 +1639,7 @@ def I2CCom(M, device, rw, hl, data1, data2, SMBUSFLAG):
                 time.sleep(0.1)
                 GPIO.output('P8_15', GPIO.HIGH)
                 time.sleep(0.1)
-                logger.warning('Did multiplexer hard-reset on %s', M)
+                logger_ctx.warning('Did multiplexer hard-reset on %s', M)
 
         if tries > 20:  # If it has failed a number of times then likely something is seriously wrong, so we crash the software.
             sysItems['Watchdog']['ON'] = 0  # Basically this will crash all the electronics and the software.
@@ -1676,12 +1676,12 @@ def I2CCom(M, device, rw, hl, data1, data2, SMBUSFLAG):
 
             if device != "ThermometerInternal":
                 warn_msg = f'Failed {device} comms {tries} times on {M} ({sysData[M]["DeviceID"]})'
-                logger.warning(warn_msg)
+                logger_ctx.warning(warn_msg)
                 time.sleep(0.02)
             if device == 'AS7341':
                 warn_msg = ' Failed AS7341 in I2CCom while trying to send %s and %s on %s (%s)' \
                            % (str(data1), str(data2), M, sysData[M]['DeviceID'])
-                logger.warning(warn_msg)
+                logger_ctx.warning(warn_msg)
                 out = -1
                 tries = -1
 
@@ -1695,7 +1695,7 @@ def I2CCom(M, device, rw, hl, data1, data2, SMBUSFLAG):
             sysData[M]['present'] = 0
             critical_msg = 'Failed to communicate to %s %d times on %s (%s). Disabling hardware and software!' \
                            % (device, application.config['DEVICE_COMM_FAILURE_THRESHOLD'], M, sysData[M]['DeviceID'])
-            logger.critical(critical_msg)
+            logger_ctx.critical(critical_msg)
             tries = -1
             os._exit(4)
 
@@ -1728,27 +1728,27 @@ def CalibrateOD(M, item, value, value2):
         b = sysData[M]['OD0']['LASERb']
         if ODActual < 0:
             ODActual = 0
-            logger.warning("You put a negative OD into calibration! Setting it to 0")
+            logger_ctx.warning("You put a negative OD into calibration! Setting it to 0")
 
         raw = ((ODActual / a + (b / (2 * a)) ** 2) ** 0.5) - (b / (2 * a))  # This is performing the inverse function of the quadratic OD calibration.
         OD0 = (10.0 ** raw) * ODRaw
         if OD0 < sysData[M][item]['min']:
             OD0 = sysData[M][item]['min']
-            logger.warning('OD calibration value seems too low?!')
+            logger_ctx.warning('OD calibration value seems too low?!')
 
         if OD0 > sys_state.get_item_value(M, item, 'max', float('inf')):
             OD0 = sys_state.get_item_value(M, item, 'max')
-            logger.warning('OD calibration value seems too high?!')
+            logger_ctx.warning('OD calibration value seems too high?!')
 
         sys_state.set_item_value(M, item, 'target', OD0)
         info_msg = f"Calibrated OD on {M} ({sysData[M]['DeviceID']})"
-        logger.info(info_msg)
+        logger_ctx.info(info_msg)
     elif device == 'LEDF':
         a = sysData[M]['OD0']['LEDFa']  # Retrieve the calibration factors for OD.
 
         if ODActual < 0:
             ODActual = 0
-            logger.warning('Negative OD provided for calibration; clamping to 0')
+            logger_ctx.warning('Negative OD provided for calibration; clamping to 0')
         if M == 'M0':
             CF = 1299.0
         elif M == 'M1':
@@ -1761,24 +1761,24 @@ def CalibrateOD(M, item, value, value2):
         # raw=(ODActual)/a  #This is performing the inverse function of the linear OD calibration.
         # OD0=ODRaw - raw*CF
         OD0 = ODRaw / ODActual
-        logger.debug('OD0 calculation (LEDF) result: %s', OD0)
+        logger_ctx.debug('OD0 calculation (LEDF) result: %s', OD0)
 
         if OD0 < sysData[M][item]['min']:
             OD0 = sys_state.get_item_value(M, item, 'min')
-            logger.warning('OD calibration value seems too low?!')
+            logger_ctx.warning('OD calibration value seems too low?!')
         if OD0 > sys_state.get_item_value(M, item, 'max', float('inf')):
             OD0 = sys_state.get_item_value(M, item, 'max')
-            logger.warning('OD calibration value seems too high?!')
+            logger_ctx.warning('OD calibration value seems too high?!')
 
         sys_state.set_item_value(M, item, 'target', OD0)
         info_msg = f"Calibrated OD on {M} ({sysData[M]['DeviceID']})"
-        logger.info(info_msg)
+        logger_ctx.info(info_msg)
     elif device == 'LEDA':
         a = sysData[M]['OD0']['LEDAa']  # Retrieve the calibration factors for OD.
 
         if ODActual < 0:
             ODActual = 0
-            logger.warning("You put a negative OD into calibration! Setting it to 0")
+            logger_ctx.warning("You put a negative OD into calibration! Setting it to 0")
         if M == 'M0':
             CF = 422
         elif M == 'M1':
@@ -1791,18 +1791,18 @@ def CalibrateOD(M, item, value, value2):
         # raw=(ODActual)/a  #This is performing the inverse function of the linear OD calibration.
         # OD0=ODRaw - raw*CF
         OD0 = ODRaw / ODActual
-        logger.debug('OD0 calculation (LEDA) result: %s', OD0)
+        logger_ctx.debug('OD0 calculation (LEDA) result: %s', OD0)
 
         if OD0 < sysData[M][item]['min']:
             OD0 = sys_state.get_item_value(M, item, 'min')
-            logger.warning('OD calibration value seems too low?!')
+            logger_ctx.warning('OD calibration value seems too low?!')
         if OD0 > sys_state.get_item_value(M, item, 'max', float('inf')):
             OD0 = sys_state.get_item_value(M, item, 'max')
-            logger.warning('OD calibration value seems too high?!')
+            logger_ctx.warning('OD calibration value seems too high?!')
 
         sys_state.set_item_value(M, item, 'target', OD0)
         info_msg = f"Calibrated OD on {M} ({sysData[M]['DeviceID']})"
-        logger.info(info_msg)
+        logger_ctx.info(info_msg)
 
     return '', 204
 
@@ -1823,10 +1823,10 @@ def SampleOD(M, value):
 
     od_value = str(OD0Actual)
     od_value = od_value.replace('.', '_')
-    logger.info('Current actual OD: %s', od_value)
+    logger_ctx.info('Current actual OD: %s', od_value)
     filename = f'OD_Sampels_{M}_{od_value}_{sysData[M]["DeviceID"]}.csv'
     number_of_measurements = 200
-    application.logger.info(f'collecting {number_of_measurements} OD measurements to characterize {M} ({sysData[M]["DeviceID"]})')
+    logger_ctx.info(f'collecting {number_of_measurements} OD measurements to characterize {M} ({sysData[M]["DeviceID"]})')
     th = Thread(target=collect_od_samples, args=(filename, number_of_measurements, M))
     th.setDaemon(True)
     th.start()
@@ -1846,7 +1846,7 @@ def collect_od_samples(filename, number_of_measurements, M):
     """
     for idx in range(number_of_measurements):
         out = GetTransmission(M, 'LASER650', ['CLEAR'], 1, 255)
-        logger.debug('%s %d: %f', M, idx, out[0])
+        logger_ctx.debug('%s %d: %f', M, idx, out[0])
         with open(filename, 'a') as f:
             f.write("%s\n" % float(out[0]))
         time.sleep(0.25)
@@ -1873,7 +1873,7 @@ def MeasureOD(M):
         else:
             sysData[M]['OD']['current'] = 0
             warn_msg = f' OD Measurement close to 0 on {M} ({sysData[M]["DeviceID"]}) device: {str(device)}'
-            logger.warning(warn_msg)
+            logger_ctx.warning(warn_msg)
     elif (device == 'LEDF'):
         out = GetTransmission(M, 'LEDF', ['CLEAR'], 7, 255)
 
@@ -1894,7 +1894,7 @@ def MeasureOD(M):
         except Exception as e:
             sysData[M]['OD']['current'] = 0;
             warn_msg = f' OD Measurement exception on {M} ({sysData[M]["DeviceID"]}) device: {str(device)}, error: {e}'
-            logger.warning(warn_msg, exc_info=True)
+            logger_ctx.warning(warn_msg, exc_info=True)
 
     elif device == 'LEDA':
         out = GetTransmission(M, 'LEDA', ['CLEAR'], 7, 255)
@@ -1917,7 +1917,7 @@ def MeasureOD(M):
         except Exception as e:
             sysData[M]['OD']['current'] = 0;
             warn_msg = f' OD Measurement exception on {M} ({sysData[M]["DeviceID"]}) device: {str(device)}, error: {e}'
-            logger.warning(warn_msg, exc_info=True)
+            logger_ctx.warning(warn_msg, exc_info=True)
 
     return '', 204
 
@@ -1980,7 +1980,7 @@ def setPWM(M, device, channels, fraction, ConsecutiveFails):
     global sysItems
     global sysDevices
 
-    application.logger.debug('PWM command on %s (%s) device: %s channels: %s fractions: %s ConsecutiveFails: %d' %
+    logger_ctx.debug('PWM command on %s (%s) device: %s channels: %s fractions: %s ConsecutiveFails: %d' %
                              (M, sysData[M]['DeviceID'], device, channels, fraction, ConsecutiveFails))
     if sysDevices[M][device]['startup'] == 0:  # The following boots up the respective PWM device to the correct frequency. Potentially there is a bug here; if the device loses power after this code is run for the first time it may revert to default PWM frequency.
         I2CCom(M, device, 0, 8, 0x00, 0x10, 0)  # Turns off device. Also disables all-call functionality at bit 0 so it won't respond to address 0x70
@@ -2202,7 +2202,7 @@ def RegulateOD(M):
             try:
                 NewGrowth = math.log(ODTarget / ODNow) / timeElapsed
             except Exception as e:
-                logger.warning('Failed to compute growth rate: %s', e, exc_info=True)
+                logger_ctx.warning('Failed to compute growth rate: %s', e, exc_info=True)
                 NewGrowth = 0.0
         else:
             NewGrowth = 0.0
@@ -2268,7 +2268,7 @@ def RegulateOD(M):
         try:
             sysData[M]['OD']['target'] = TargetOD
         except Exception as e:
-            logger.debug('Zigzag activation timing issue: %s', e)
+            logger_ctx.debug('Zigzag activation timing issue: %s', e)
             # Do nothing
 
     return
@@ -2343,7 +2343,7 @@ def ExperimentStartStop(M, value):
                                                         sysData[M]['Experiment']['startTime'].replace(":", "_"),
                                                         M,
                                                         sysData[M]['DeviceID'])
-            application.logger.info('Experiment ID: %s has been assign to %s (%s)' %
+            logger_ctx.info('Experiment ID: %s has been assign to %s (%s)' %
                                     (sysData[M]['Experiment']['experimentID'], M, sysData[M]['DeviceID']))
             sysData[M]['Experiment']['startTimeRaw'] = now
 
@@ -2405,7 +2405,7 @@ def runExperiment(M, placeholder):
         ODV = ODV + sysData[M]['OD']['current']
         time.sleep(0.25)
     sysData[M]['OD']['current'] = ODV / float(application.config['NUMBER_OF_OD_MEASUREMENTS'])
-    application.logger.info('raw OD was measured at %g (averaged from %d) on %s (%s)'
+    logger_ctx.info('raw OD was measured at %g (averaged from %d) on %s (%s)'
                             % (sysData[M]['OD']['current'], application.config['NUMBER_OF_OD_MEASUREMENTS'],
                                M, sysData[M]['DeviceID']))
 
@@ -2532,4 +2532,4 @@ else:
     initialiseAll()
 
 info_msg = ' Start Up Complete'
-logger.info(info_msg)
+logger_ctx.info(info_msg)
