@@ -57,6 +57,26 @@ def check_config_value(config_key, default_value, critical=False):
         application.logger.info(f'config found: {config_key}={application.config[config_key]}')
 
 
+def load_device_config(config_file):
+    """Load per-device configuration from CSV file into a dict keyed by device_id."""
+    if not os.path.exists(config_file):
+        return {}
+
+    device_config = {}
+    fit_parameters = collections.namedtuple('fit_param', 'name LASERa LASERb')
+    with open(config_file) as f_config:
+        input_file = csv.DictReader(f_config)
+        for row in input_file:
+            fit_data = fit_parameters(
+                name=row['device_name'],
+                LASERa=row['fit_quad_coeff'],
+                LASERb=row['fit_lin_coeff'],
+            )
+            device_config[row['device_id']] = fit_data
+
+    return device_config
+
+
 application = Flask(__name__)
 application.config.from_pyfile('config/chibio_default.cfg', silent=True)
 application.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0  # Try this https://stackoverflow.com/questions/23112316/using-flask-how-do-i-modify-the-cache-control-header-for-all-output/23115561#23115561
@@ -517,29 +537,19 @@ def initialise(M):
     # getData=I2CCom(M,which,1,16,0x05,0,0)
 
     scanDevices(M)
-    # TODO remove this from here!
-    # read device config
     config_file = "config/device_config.csv"
-    if os.path.exists(config_file):
-        device_config = dict()
-        fit_parameters = collections.namedtuple('fit_param', 'name LASERa LASERb')
-        with open(config_file) as f_config:
-            input_file = csv.DictReader(f_config)
-            for row in input_file:
-                fit_data = fit_parameters(name=row['device_name'],
-                                          LASERa=row['fit_quad_coeff'], LASERb=row['fit_lin_coeff'])
-                device_config[row['device_id']] = fit_data
+    device_config = load_device_config(config_file)
 
     if sysData[M]['present'] == 1:
         # adjust sysData based on device config (if config exists)
-        if os.path.exists(config_file):
+        if device_config:
             try:
                 fit_data = device_config[sysData[M]['DeviceID']]
                 sysData[M]['OD0']['LASERa'] = float(fit_data.LASERa)
                 sysData[M]['OD0']['LASERb'] = float(fit_data.LASERb)
                 sysData[M]['DeviceName'] = fit_data.name
             except KeyError:
-                print('config for device %s was not found!' % sysData[M]['DeviceID'])
+                logger.warning('config for device %s was not found!', sysData[M]['DeviceID'])
         turnEverythingOff(M)
 
         V1_Present=0
