@@ -48,13 +48,13 @@ def check_config_value(config_key, default_value, critical=False):
     When a parameter is missing, it sets new default value or raise an error"""
     if config_key not in application.config.keys():
         if critical:
-            err_msg = 'config value for %s was not found, it must be set for safe operations' % config_key
+            err_msg = f'config value for {config_key} was not found, it must be set for safe operations'
             application.logger.error(err_msg)
             raise ValueError(err_msg)
         application.config[config_key] = default_value
-        application.logger.warning('config value %s was not found and set to default: %s' % (config_key, default_value))
+        application.logger.warning(f'config value {config_key} was not found and set to default: {default_value}')
     else:
-        application.logger.info('config found: %s=%s' % (config_key, application.config[config_key]))
+        application.logger.info(f'config found: {config_key}={application.config[config_key]}')
 
 
 application = Flask(__name__)
@@ -732,7 +732,7 @@ def clearTerminal(M):
         M = sysItems['UIDevice']
 
     sysData[M]['Terminal']['text'] = ''
-    addTerminal(M, 'Terminal on %s (%s) Cleared' % (M, sysData[M]['DeviceID']))
+    addTerminal(M, f'Terminal on {M} ({sysData[M]["DeviceID"]}) Cleared')
     return '', 204
 
 
@@ -769,7 +769,7 @@ def SetOutputTarget(M, item, value):
     M = str(M)
     if M == "0":
         M = sysItems['UIDevice']
-    info_msg = " Set item: %s to value %s on %s (%s)" % (str(item), str(value), M, sysData[M]['DeviceID'])
+    info_msg = f" Set item: {str(item)} to value {str(value)} on {M} ({sysData[M]['DeviceID']})"
     logger.info(info_msg)
     
     # Clamp value to min/max range
@@ -798,7 +798,7 @@ def SetOutputOn(M, item, force):
     M = str(M)
     if M == "0":
         M = sysItems['UIDevice']
-    application.logger.info('device: %s on %s (%s), output is  %d ' % (item, M, sysData[M]['DeviceID'], force))
+    application.logger.info(f'device: {item} on {M} ({sysData[M]["DeviceID"]}), output is  {force} ')
     # The first statements are to force it on or off it the command is called in force mode (force implies it sets it to
     # a given state, regardless of what it is currently in)
     if force == 1:
@@ -1172,7 +1172,7 @@ def AS7341Read(M, Gain, ISteps, reset):
     if (sysData[M]['AS7341']['current']['ADC0'] == 65535 or sysData[M]['AS7341']['current']['ADC1'] == 65535 or
             sysData[M]['AS7341']['current']['ADC2'] == 65535 or sysData[M]['AS7341']['current']['ADC3'] == 65535 or
             sysData[M]['AS7341']['current']['ADC4'] == 65535 or sysData[M]['AS7341']['current']['ADC5'] == 65535):
-        info_msg = ' Spectrometer measurement was saturated on device %s (%s)' % (M, sysData[M]['DeviceID'])
+        info_msg = f' Spectrometer measurement was saturated on device {M} ({sysData[M]["DeviceID"]})'
         logger.info(info_msg)  # Not sure if this saturation check above actually works correctly...
     return 0
 
@@ -1265,8 +1265,7 @@ def GetLight(M, wavelengths, Gain, ISteps):
         if wavelength != "OFF":
             output[index] = sysData[M]['AS7341']['current'][AS7341_DACS[index]]
             if output == 65535:
-                info_msg = ' Spectrometer at %s wavelength was saturated on device %s (%s)' % (
-                    wavelength, M, sysData[M]['DeviceID'])
+                info_msg = f' Spectrometer at {wavelength} wavelength was saturated on device {M} ({sysData[M]["DeviceID"]})'
                 logger.info(info_msg)
         index = index + 1
 
@@ -1316,7 +1315,7 @@ def CustomProgram(M):
         reader = csv.reader(f)
         listin = list(reader)
     Params = listin[0]
-    addTerminal(M, 'Running Program = %s on device %s (%s) ' % (str(program), M, sysData[M]['DeviceID']))
+    addTerminal(M, f'Running Program = {str(program)} on device {M} ({sysData[M]["DeviceID"]}) ')
 
     if program == "C1":  # Optogenetic Integral Control Program
         integral = 0.0  # Integral in integral controller
@@ -1573,7 +1572,7 @@ def CharacteriseDevice2(M):
                         % (M, sysData[M]['DeviceID'], str(item), str(power)))
             time.sleep(0.05)
 
-    filename = 'characterisation_data_%s_%s.txt' % (M, sysData[M]['DeviceID'])
+    filename = f'characterisation_data_{M}_{sysData[M]["DeviceID"]}.txt'
     f = open(filename, 'w')
     simplejson.dump(result, f)
     f.close()
@@ -1673,7 +1672,7 @@ def I2CCom(M, device, rw, hl, data1, data2, SMBUSFLAG):
             tries = tries + 1
 
             if device != "ThermometerInternal":
-                warn_msg = 'Failed %s comms %d times on %s (%s)' % (device, tries, M, sysData[M]['DeviceID'])
+                warn_msg = f'Failed {device} comms {tries} times on {M} ({sysData[M]["DeviceID"]})'
                 logger.warning(warn_msg)
                 time.sleep(0.02)
             if device == 'AS7341':
@@ -1739,7 +1738,7 @@ def CalibrateOD(M, item, value, value2):
             logger.warning('OD calibration value seems too high?!')
 
         sys_state.set_item_value(M, item, 'target', OD0)
-        info_msg = "Calibrated OD on %s (%s)" % (M, sysData[M]['DeviceID'])
+        info_msg = f"Calibrated OD on {M} ({sysData[M]['DeviceID']})"
         logger.info(info_msg)
     elif device == 'LEDF':
         a = sysData[M]['OD0']['LEDFa']  # Retrieve the calibration factors for OD.
@@ -1769,7 +1768,7 @@ def CalibrateOD(M, item, value, value2):
             logger.warning('OD calibration value seems too high?!')
 
         sys_state.set_item_value(M, item, 'target', OD0)
-        info_msg = "Calibrated OD on %s (%s)" % (M, sysData[M]['DeviceID'])
+        info_msg = f"Calibrated OD on {M} ({sysData[M]['DeviceID']})"
         logger.info(info_msg)
     elif device == 'LEDA':
         a = sysData[M]['OD0']['LEDAa']  # Retrieve the calibration factors for OD.
@@ -1799,7 +1798,7 @@ def CalibrateOD(M, item, value, value2):
             logger.warning('OD calibration value seems too high?!')
 
         sys_state.set_item_value(M, item, 'target', OD0)
-        info_msg = "Calibrated OD on %s (%s)" % (M, sysData[M]['DeviceID'])
+        info_msg = f"Calibrated OD on {M} ({sysData[M]['DeviceID']})"
         logger.info(info_msg)
 
     return '', 204
@@ -1822,10 +1821,9 @@ def SampleOD(M, value):
     od_value = str(OD0Actual)
     od_value = od_value.replace('.', '_')
     logger.info('Current actual OD: %s', od_value)
-    filename = 'OD_Sampels_%s_%s_%s.csv' % (M, od_value, sysData[M]['DeviceID'])
+    filename = f'OD_Sampels_{M}_{od_value}_{sysData[M]["DeviceID"]}.csv'
     number_of_measurements = 200
-    application.logger.info('collecting %d OD measurements to characterize %s (%s)' %
-                            (number_of_measurements, M, sysData[M]['DeviceID']))
+    application.logger.info(f'collecting {number_of_measurements} OD measurements to characterize {M} ({sysData[M]["DeviceID"]})')
     th = Thread(target=collect_od_samples, args=(filename, number_of_measurements, M))
     th.setDaemon(True)
     th.start()
@@ -1871,7 +1869,7 @@ def MeasureOD(M):
             sysData[M]['OD']['current'] = raw * b + raw * raw * a
         else:
             sysData[M]['OD']['current'] = 0
-            warn_msg = ' OD Measurement close to 0 on %s (%s) device: %s' % (M, sysData[M]['DeviceID'], str(device))
+            warn_msg = f' OD Measurement close to 0 on {M} ({sysData[M]["DeviceID"]}) device: {str(device)}'
             logger.warning(warn_msg)
     elif (device == 'LEDF'):
         out = GetTransmission(M, 'LEDF', ['CLEAR'], 7, 255)
@@ -1892,7 +1890,7 @@ def MeasureOD(M):
             sysData[M]['OD']['current'] = raw
         except Exception as e:
             sysData[M]['OD']['current'] = 0;
-            warn_msg = ' OD Measurement exception on %s (%s) device: %s, error: %s' % (M, sysData[M]['DeviceID'], str(device), e)
+            warn_msg = f' OD Measurement exception on {M} ({sysData[M]["DeviceID"]}) device: {str(device)}, error: {e}'
             logger.warning(warn_msg, exc_info=True)
 
     elif device == 'LEDA':
@@ -1915,7 +1913,7 @@ def MeasureOD(M):
             sysData[M]['OD']['current'] = raw
         except Exception as e:
             sysData[M]['OD']['current'] = 0;
-            warn_msg = ' OD Measurement exception on %s (%s) device: %s, error: %s' % (M, sysData[M]['DeviceID'], str(device), e)
+            warn_msg = f' OD Measurement exception on {M} ({sysData[M]["DeviceID"]}) device: {str(device)}, error: {e}'
             logger.warning(warn_msg, exc_info=True)
 
     return '', 204
@@ -2330,7 +2328,7 @@ def ExperimentStartStop(M, value):
     if value and (sysData[M]['Experiment']['ON'] == 0):
 
         sysData[M]['Experiment']['ON'] = 1
-        addTerminal(M, 'Experiment on %s (%s) Started' % (M, sysData[M]['DeviceID']))
+        addTerminal(M, f'Experiment on {M} ({sysData[M]["DeviceID"]}) Started')
 
         if sysData[M]['Experiment']['cycles'] == 0:
             now = datetime.now()
@@ -2358,7 +2356,7 @@ def ExperimentStartStop(M, value):
     else:
         sysData[M]['Experiment']['ON'] = 0
         sysData[M]['OD']['ON'] = 0
-        addTerminal(M, 'Experiment on %s (%s) Stopping at end of cycle' % (M, sysData[M]['DeviceID']))
+        addTerminal(M, f'Experiment on {M} ({sysData[M]["DeviceID"]}) Stopping at end of cycle')
         SetOutputOn(M, 'Pump1', 0)
         SetOutputOn(M, 'Pump2', 0)
         SetOutputOn(M, 'Stir', 0)
@@ -2383,7 +2381,7 @@ def runExperiment(M, placeholder):
     elapsedTime = now - sysData[M]['Experiment']['startTimeRaw']
     elapsedTimeSeconds = round(elapsedTime.total_seconds(), 2)
     sysData[M]['Experiment']['cycles'] = sysData[M]['Experiment']['cycles'] + 1
-    addTerminal(M, 'Cycle %d on %s (%s) Started' % (sysData[M]['Experiment']['cycles'], M, sysData[M]['DeviceID']))
+    addTerminal(M, f'Cycle {sysData[M]["Experiment"]["cycles"]} on {M} ({sysData[M]["DeviceID"]}) Started')
     CycleTime = sys_state.get_item_value(M, 'Experiment', 'cycleTime', 0.0)
 
     SetOutputOn(M, 'Stir', 0)  # Turning stirring off
@@ -2391,7 +2389,7 @@ def runExperiment(M, placeholder):
     if sysData[M]['Experiment']['ON'] == 0:
         turnEverythingOff(M)
         sysData[M]['Experiment']['cycles'] = sysData[M]['Experiment']['cycles'] - 1  # Cycle didn't finish, don't count it.
-        addTerminal(M, 'Experiment on %s (%s) Stopped' % (M, sysData[M]['DeviceID']))
+        addTerminal(M, f'Experiment on {M} ({sysData[M]["DeviceID"]}) Stopped')
         return
 
     sysData[M]['OD']['Measuring'] = 1  # Begin measuring - this flag is just to indicate that a measurement is currently being taken.
@@ -2489,7 +2487,7 @@ def runExperiment(M, placeholder):
         TempStartTime = sysData[M]['Experiment']['startTimeRaw']
         sysData[M]['Experiment']['startTimeRaw'] = 0  # We had to set this to zero during the write operation since the system does not like writing data in such a format.
 
-        filename = '%s/%s.txt' % (application.config['DATA_DIR'], sysData[M]['Experiment']['experimentID'])
+        filename = f'{application.config["DATA_DIR"]}/{sysData[M]["Experiment"]["experimentID"]}.txt'
         with open(filename, 'w') as f:
             simplejson.dump(sysData[M], f)
         sysData[M]['Experiment']['startTimeRaw'] = TempStartTime
@@ -2497,7 +2495,7 @@ def runExperiment(M, placeholder):
 
     if sysData[M]['Experiment']['ON'] == 0:
         turnEverythingOff(M)
-        addTerminal(M, 'Experiment on %s (%s) Stopped' % (M, sysData[M]['DeviceID']))
+        addTerminal(M, f'Experiment on {M} ({sysData[M]["DeviceID"]}) Stopped')
         return
 
     nowend = datetime.now()
@@ -2506,11 +2504,11 @@ def runExperiment(M, placeholder):
     sleeptime = CycleTime - elapsedTimeSeconds2
     if sleeptime < 0:
         sleeptime = 0
-        addTerminal(M, 'Experiment Cycle Time on %s (%s) is too short!!!' % (M, sysData[M]['DeviceID']))
+        addTerminal(M, f'Experiment Cycle Time on {M} ({sysData[M]["DeviceID"]}) is too short!!!')
 
     time.sleep(sleeptime)
     LightActuation(M, 0)  # Turn light actuation off if it is running.
-    addTerminal(M, 'Cycle %d on %s (%s) Complete' % (sysData[M]['Experiment']['cycles'], M, sysData[M]['DeviceID']))
+    addTerminal(M, f'Cycle {sysData[M]["Experiment"]["cycles"]} on {M} ({sysData[M]["DeviceID"]}) Complete')
 
     # Now we run this function again if the automated experiment is still going.
     if sysData[M]['Experiment']['ON'] and sysData[M]['Experiment']['threadCount'] == currentThread:
@@ -2520,7 +2518,7 @@ def runExperiment(M, placeholder):
 
     else:
         turnEverythingOff(M)
-        addTerminal(M, 'Experiment on %s (%s) Stopped' % (M, sysData[M]['DeviceID']))
+        addTerminal(M, f'Experiment on {M} ({sysData[M]["DeviceID"]}) Stopped')
 
 
 if __name__ == '__main__':
