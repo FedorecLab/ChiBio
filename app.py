@@ -1745,7 +1745,7 @@ def CalibrateOD(M, item, value, value2):
 
         if ODActual < 0:
             ODActual = 0
-            print("You put a negative OD into calibration! Setting it to 0")
+            logger.warning('Negative OD provided for calibration; clamping to 0')
         if M == 'M0':
             CF = 1299.0
         elif M == 'M1':
