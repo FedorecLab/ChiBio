@@ -1573,9 +1573,8 @@ def CharacteriseDevice2(M):
             time.sleep(0.05)
 
     filename = f'characterisation_data_{M}_{sysData[M]["DeviceID"]}.txt'
-    f = open(filename, 'w')
-    simplejson.dump(result, f)
-    f.close()
+    with open(filename, 'w') as f:
+        simplejson.dump(result, f)
     return
 
 
