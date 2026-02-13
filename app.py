@@ -33,13 +33,7 @@ from constants import (
     PUMPS,
 )
 
-from logging_utils import (
-    setup_logging_utils,
-    log_device_event,
-    log_hardware_failure,
-    log_comm_event,
-    log_measurement,
-)
+from logging_utils import LoggerContext
 
 
 def check_config_value(config_key, default_value, critical=False):
@@ -321,8 +315,8 @@ sysItems = {
 # Create system state wrapper (backwards compatible - globals still accessible)
 sys_state = SystemState(sysData, sysDevices, sysItems)
 
-# Initialize logging utilities with logger and sysData references
-setup_logging_utils(logger, sysData)
+# Initialize logging context with explicit dependencies
+logger_ctx = LoggerContext(logger, sysData)
 
 
 # This section of code is responsible for the watchdog circuit. The circuit is implemented in hardware on the control
@@ -1260,11 +1254,11 @@ def GetLight(M, wavelengths, Gain, ISteps):
             AS7341Read(M, Gain, ISteps, success)
             success = 2
         except Exception as e:
-            log_comm_event(M, 'AS7341', 'measurement failed', str(e), level=logging.WARNING)
+            logger_ctx.log_comm_event(M, 'AS7341', 'measurement failed', str(e), level=logging.WARNING)
             logger.warning(f'AS7341 measurement exception: {e}', exc_info=True)
             success = success + 1
             if success == 2:
-                log_device_event(logging.WARNING, M, 'AS7341 measurement failed twice, setting unity values')
+                logger_ctx.log_device_event(logging.WARNING, M, 'AS7341 measurement failed twice, setting unity values')
                 sysData[M]['AS7341']['current']['ADC0'] = 1
                 for DAC in AS7341_DACS[1:]:
                     sysData[M]['AS7341']['current'][DAC] = 0
@@ -1603,7 +1597,7 @@ def I2CCom(M, device, rw, hl, data1, data2, SMBUSFLAG):
 
     global sysDevices
     if sysData[M]['present'] == 0:  # Something stupid has happened in software if this is the case!
-        log_device_event(logging.CRITICAL, M, 'Trying to communicate with absent device - bug in software! Disabling hardware and software!')
+        logger_ctx.log_device_event(logging.CRITICAL, M, 'Trying to communicate with absent device - bug in software! Disabling hardware and software!')
         sysItems['Watchdog']['ON'] = 0  # Basically this will crash all the electronics and the software.
         out = 0
         tries = -1
@@ -1627,18 +1621,18 @@ def I2CCom(M, device, rw, hl, data1, data2, SMBUSFLAG):
             else:
                 tries = tries + 1
                 time.sleep(0.02)
-                log_hardware_failure(M, 'Multiplexer', tries, fatal=False)
+                logger_ctx.log_hardware_failure(M, 'Multiplexer', tries, fatal=False)
         except Exception as e:  # If there is an error in the above.
             tries = tries + 1
             time.sleep(0.02)
-            log_comm_event(M, 'Multiplexer', 'communication failed', f'attempt {tries}: {e}', level=logging.WARNING)
+            logger_ctx.log_comm_event(M, 'Multiplexer', 'communication failed', f'attempt {tries}: {e}', level=logging.WARNING)
 
             if tries > 2:
                 try:
                     sysItems['Multiplexer']['device'].write8(int(0x00), int(0x00))  # Disconnect multiplexer.
-                    log_device_event(logging.WARNING, M, 'Disconnected multiplexer, trying to connect again')
+                    logger_ctx.log_device_event(logging.WARNING, M, 'Disconnected multiplexer, trying to connect again')
                 except Exception as e:
-                    log_device_event(logging.WARNING, M, f'Failed to recover multiplexer: {e}')
+                    logger_ctx.log_device_event(logging.WARNING, M, f'Failed to recover multiplexer: {e}')
             if tries == 5 or tries == 10 or tries == 15:
                 watchdog.toggle()  # Flip the watchdog pin to ensure it is working.
                 GPIO.output('P8_15', GPIO.LOW)  # Flip the Multiplexer RESET pin. Note this reset function works on Control Board V1.2 and later.
@@ -1650,7 +1644,7 @@ def I2CCom(M, device, rw, hl, data1, data2, SMBUSFLAG):
         if tries > 20:  # If it has failed a number of times then likely something is seriously wrong, so we crash the software.
             sysItems['Watchdog']['ON'] = 0  # Basically this will crash all the electronics and the software.
             out = 0
-            log_hardware_failure(M, 'Multiplexer', 20, fatal=True)
+            logger_ctx.log_hardware_failure(M, 'Multiplexer', 20, fatal=True)
             tries = -1
             os._exit(4)
 
@@ -1710,7 +1704,7 @@ def I2CCom(M, device, rw, hl, data1, data2, SMBUSFLAG):
     try:
         sysItems['Multiplexer']['device'].write8(int(0x00), int(0x00))  # Disconnect multiplexer with each iteration.
     except Exception as e:
-        log_device_event(logging.WARNING, M, f'Failed to disconnect multiplexer: {e}')
+        logger_ctx.log_device_event(logging.WARNING, M, f'Failed to disconnect multiplexer: {e}')
 
     lock.release()  # Bus lock is released so next command can occur.
 
@@ -2020,10 +2014,10 @@ def setPWM(M, device, channels, fraction, ConsecutiveFails):
 
         if CheckLow != (int(LowVals, 2)) or CheckHigh != (int(HighVals, 2)) or CheckHighON != int(0x00) or CheckLowON != int(0x00):  # We check to make sure it has been set to appropriate values.
             ConsecutiveFails = ConsecutiveFails + 1
-            log_hardware_failure(M, f'PWM {device} transmission test', ConsecutiveFails, fatal=False)
+            logger_ctx.log_hardware_failure(M, f'PWM {device} transmission test', ConsecutiveFails, fatal=False)
             if ConsecutiveFails > 10:
                 sysItems['Watchdog']['ON'] = 0  # Basically this will crash all the electronics and the software.
-                log_hardware_failure(M, 'PWM', 10, fatal=True)
+                logger_ctx.log_hardware_failure(M, 'PWM', 10, fatal=True)
                 os._exit(4)
             else:
                 time.sleep(0.1)
