@@ -2198,7 +2198,8 @@ def RegulateOD(M):
         if ODNow > 0:
             try:
                 NewGrowth = math.log(ODTarget / ODNow) / timeElapsed
-            except:
+            except Exception as e:
+                logger.warning('Failed to compute growth rate: %s', e, exc_info=True)
                 NewGrowth = 0.0
         else:
             NewGrowth = 0.0
