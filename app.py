@@ -108,6 +108,15 @@ class SystemState:
     def get_data(self, device_id):
         """Get data dict for a specific device."""
         return self.data.get(device_id, {})
+
+    def get_data_value(self, device_id, key, default=None):
+        """Get a top-level value for a device (e.g., 'present', 'DeviceID')."""
+        return self.get_data(device_id).get(key, default)
+
+    def set_data_value(self, device_id, key, value):
+        """Set a top-level value for a device (e.g., 'present', 'DeviceID')."""
+        if device_id in self.data:
+            self.data[device_id][key] = value
     
     def get_device(self, device_id):
         """Get device dict for a specific device."""
@@ -137,6 +146,11 @@ class SystemState:
     def get_device_item_value(self, device_id, item, key, default=None):
         """Get a specific value from device item (e.g., 'thread', 'threadCount')."""
         return self.get_device_item(device_id, item).get(key, default)
+
+    def set_device_item_value(self, device_id, item, key, value):
+        """Set a specific value for a device item (e.g., 'thread', 'threadCount')."""
+        if device_id in self.devices and item in self.devices[device_id]:
+            self.devices[device_id][item][key] = value
     
     def get_effective_intensity(self, device_id, item):
         """Calculate effective intensity: target * ON state."""
@@ -363,161 +377,172 @@ def initialise(M):
     global sysDevices
 
     for LED in LED_OUTPUTS:
-        sysData[M][LED]['target'] = sysData[M][LED]['default']
-        sysData[M][LED]['ON'] = 0
+        led_default = sys_state.get_item_value(M, LED, 'default', 0.0)
+        sys_state.set_item_value(M, LED, 'target', led_default)
+        sys_state.set_item_value(M, LED, 'ON', 0)
 
-    sysData[M]['UV']['target'] = sysData[M]['UV']['default']
-    sysData[M]['UV']['ON'] = 0
+    uv_default = sys_state.get_item_value(M, 'UV', 'default', 0.0)
+    sys_state.set_item_value(M, 'UV', 'target', uv_default)
+    sys_state.set_item_value(M, 'UV', 'ON', 0)
 
-    sysData[M]['LASER650']['target'] = sysData[M]['LASER650']['default']
-    sysData[M]['LASER650']['ON'] = 0
+    laser_default = sys_state.get_item_value(M, 'LASER650', 'default', 0.0)
+    sys_state.set_item_value(M, 'LASER650', 'target', laser_default)
+    sys_state.set_item_value(M, 'LASER650', 'ON', 0)
 
+    # Initialize FP1
     FP = 'FP1'
-    sysData[M][FP]['ON'] = 0
-    sysData[M][FP]['LED'] = "LEDB"
-    sysData[M][FP]['Base'] = 0
-    sysData[M][FP]['Emit1'] = 0
-    sysData[M][FP]['Emit2'] = 0
-    sysData[M][FP]['Emit1_raw'] = 0
-    sysData[M][FP]['Emit2_raw'] = 0
-    sysData[M][FP]['BaseBand'] = "CLEAR"
-    sysData[M][FP]['Emit1Band'] = "nm510"
-    sysData[M][FP]['Emit2Band'] = "nm550"
-    sysData[M][FP]['Gain'] = "x10"
-    sysData[M][FP]['BaseRecord'] = []
-    sysData[M][FP]['Emit1Record'] = []
-    sysData[M][FP]['Emit2Record'] = []
+    sys_state.set_item_value(M, FP, 'ON', 0)
+    sys_state.set_item_value(M, FP, 'LED', 'LEDB')
+    sys_state.set_item_value(M, FP, 'Base', 0)
+    sys_state.set_item_value(M, FP, 'Emit1', 0)
+    sys_state.set_item_value(M, FP, 'Emit2', 0)
+    sys_state.set_item_value(M, FP, 'Emit1_raw', 0)
+    sys_state.set_item_value(M, FP, 'Emit2_raw', 0)
+    sys_state.set_item_value(M, FP, 'BaseBand', 'CLEAR')
+    sys_state.set_item_value(M, FP, 'Emit1Band', 'nm510')
+    sys_state.set_item_value(M, FP, 'Emit2Band', 'nm550')
+    sys_state.set_item_value(M, FP, 'Gain', 'x10')
+    sys_state.set_item_value(M, FP, 'BaseRecord', [])
+    sys_state.set_item_value(M, FP, 'Emit1Record', [])
+    sys_state.set_item_value(M, FP, 'Emit2Record', [])
+
+    # Initialize FP2
     FP = 'FP2'
-    sysData[M][FP]['ON'] = 0
-    sysData[M][FP]['LED'] = "LEDD"
-    sysData[M][FP]['Base'] = 0
-    sysData[M][FP]['Emit1'] = 0
-    sysData[M][FP]['Emit2'] = 0
-    sysData[M][FP]['Emit1_raw'] = 0
-    sysData[M][FP]['Emit2_raw'] = 0
-    sysData[M][FP]['BaseBand'] = "CLEAR"
-    sysData[M][FP]['Emit1Band'] = "nm583"
-    sysData[M][FP]['Emit2Band'] = "nm620"
-    sysData[M][FP]['BaseRecord'] = []
-    sysData[M][FP]['Emit1Record'] = []
-    sysData[M][FP]['Emit2Record'] = []
-    sysData[M][FP]['Gain'] = "x10"
+    sys_state.set_item_value(M, FP, 'ON', 0)
+    sys_state.set_item_value(M, FP, 'LED', 'LEDD')
+    sys_state.set_item_value(M, FP, 'Base', 0)
+    sys_state.set_item_value(M, FP, 'Emit1', 0)
+    sys_state.set_item_value(M, FP, 'Emit2', 0)
+    sys_state.set_item_value(M, FP, 'Emit1_raw', 0)
+    sys_state.set_item_value(M, FP, 'Emit2_raw', 0)
+    sys_state.set_item_value(M, FP, 'BaseBand', 'CLEAR')
+    sys_state.set_item_value(M, FP, 'Emit1Band', 'nm583')
+    sys_state.set_item_value(M, FP, 'Emit2Band', 'nm620')
+    sys_state.set_item_value(M, FP, 'BaseRecord', [])
+    sys_state.set_item_value(M, FP, 'Emit1Record', [])
+    sys_state.set_item_value(M, FP, 'Emit2Record', [])
+    sys_state.set_item_value(M, FP, 'Gain', 'x10')
+
+    # Initialize FP3
     FP = 'FP3'
-    sysData[M][FP]['ON'] = 0
-    sysData[M][FP]['LED'] = "LEDE"
-    sysData[M][FP]['Base'] = 0
-    sysData[M][FP]['Emit1'] = 0
-    sysData[M][FP]['Emit2'] = 0
-    sysData[M][FP]['Emit1_raw'] = 0
-    sysData[M][FP]['Emit2_raw'] = 0
-    sysData[M][FP]['BaseBand'] = "CLEAR"
-    sysData[M][FP]['Emit1Band'] = "nm620"
-    sysData[M][FP]['Emit2Band'] = "nm670"
-    sysData[M][FP]['BaseRecord'] = []
-    sysData[M][FP]['Emit1Record'] = []
-    sysData[M][FP]['Emit2Record'] = []
-    sysData[M][FP]['Gain'] = "x10"
+    sys_state.set_item_value(M, FP, 'ON', 0)
+    sys_state.set_item_value(M, FP, 'LED', 'LEDE')
+    sys_state.set_item_value(M, FP, 'Base', 0)
+    sys_state.set_item_value(M, FP, 'Emit1', 0)
+    sys_state.set_item_value(M, FP, 'Emit2', 0)
+    sys_state.set_item_value(M, FP, 'Emit1_raw', 0)
+    sys_state.set_item_value(M, FP, 'Emit2_raw', 0)
+    sys_state.set_item_value(M, FP, 'BaseBand', 'CLEAR')
+    sys_state.set_item_value(M, FP, 'Emit1Band', 'nm620')
+    sys_state.set_item_value(M, FP, 'Emit2Band', 'nm670')
+    sys_state.set_item_value(M, FP, 'BaseRecord', [])
+    sys_state.set_item_value(M, FP, 'Emit1Record', [])
+    sys_state.set_item_value(M, FP, 'Emit2Record', [])
+    sys_state.set_item_value(M, FP, 'Gain', 'x10')
 
     for PUMP in PUMPS:
-        sysData[M][PUMP]['default'] = 0.0;
-        sysData[M][PUMP]['target'] = sysData[M][PUMP]['default']
-        sysData[M][PUMP]['ON'] = 0
-        sysData[M][PUMP]['direction'] = 1.0
-        sysDevices[M][PUMP]['threadCount'] = 0
-        sysDevices[M][PUMP]['active'] = 0
+        sys_state.set_item_value(M, PUMP, 'default', 0.0)
+        sys_state.set_item_value(M, PUMP, 'target', 0.0)
+        sys_state.set_item_value(M, PUMP, 'ON', 0)
+        sys_state.set_item_value(M, PUMP, 'direction', 1.0)
+        sys_state.set_device_item_value(M, PUMP, 'threadCount', 0)
+        sys_state.set_device_item_value(M, PUMP, 'active', 0)
 
-    sysData[M]['Heat']['default'] = 0;
-    sysData[M]['Heat']['target'] = sysData[M]['Heat']['default']
-    sysData[M]['Heat']['ON'] = 0
+    sys_state.set_item_value(M, 'Heat', 'default', 0)
+    sys_state.set_item_value(M, 'Heat', 'target', 0)
+    sys_state.set_item_value(M, 'Heat', 'ON', 0)
 
-    sysData[M]['Thermostat']['default'] = 37.0;
-    sysData[M]['Thermostat']['target'] = sysData[M]['Thermostat']['default']
-    sysData[M]['Thermostat']['ON'] = 0
-    sysData[M]['Thermostat']['Integral'] = 0
-    sysData[M]['Thermostat']['last'] = -1
+    sys_state.set_item_value(M, 'Thermostat', 'default', 37.0)
+    sys_state.set_item_value(M, 'Thermostat', 'target', 37.0)
+    sys_state.set_item_value(M, 'Thermostat', 'ON', 0)
+    sys_state.set_item_value(M, 'Thermostat', 'Integral', 0)
+    sys_state.set_item_value(M, 'Thermostat', 'last', -1)
 
-    sysData[M]['Stir']['target'] = sysData[M]['Stir']['default']
-    sysData[M]['Stir']['ON'] = 0
+    stir_default = sys_state.get_item_value(M, 'Stir', 'default', 0.0)
+    sys_state.set_item_value(M, 'Stir', 'target', stir_default)
+    sys_state.set_item_value(M, 'Stir', 'ON', 0)
 
-    sysData[M]['Light']['target'] = sysData[M]['Light']['default']
-    sysData[M]['Light']['ON'] = 0
-    sysData[M]['Light']['Excite'] = 'LEDD'
+    light_default = sys_state.get_item_value(M, 'Light', 'default', 0.0)
+    sys_state.set_item_value(M, 'Light', 'target', light_default)
+    sys_state.set_item_value(M, 'Light', 'ON', 0)
+    sys_state.set_item_value(M, 'Light', 'Excite', 'LEDD')
 
-    sysData[M]['Custom']['Status'] = sysData[M]['Custom']['default']
-    sysData[M]['Custom']['ON'] = 0
-    sysData[M]['Custom']['Program'] = 'C1'
+    custom_default = sys_state.get_item_value(M, 'Custom', 'default', 0.0)
+    sys_state.set_item_value(M, 'Custom', 'Status', custom_default)
+    sys_state.set_item_value(M, 'Custom', 'ON', 0)
+    sys_state.set_item_value(M, 'Custom', 'Program', 'C1')
+    sys_state.set_item_value(M, 'Custom', 'param1', 0.0)
+    sys_state.set_item_value(M, 'Custom', 'param2', 0.0)
+    sys_state.set_item_value(M, 'Custom', 'param3', 0.0)
 
-    sysData[M]['Custom']['param1'] = 0.0
-    sysData[M]['Custom']['param2'] = 0.0
-    sysData[M]['Custom']['param3'] = 0.0
+    sys_state.set_item_value(M, 'OD', 'current', 0.0)
+    od_default = sys_state.get_item_value(M, 'OD', 'default', 0.0)
+    sys_state.set_item_value(M, 'OD', 'target', od_default)
+    sys_state.set_item_value(M, 'OD0', 'target', 65000.0)
+    sys_state.set_item_value(M, 'OD0', 'raw', 65000.0)
+    sys_state.set_item_value(M, 'OD', 'device', 'LASER650')
 
-    sysData[M]['OD']['current'] = 0.0
-    sysData[M]['OD']['target'] = sysData[M]['OD']['default'];
-    sysData[M]['OD0']['target'] = 65000.0
-    sysData[M]['OD0']['raw'] = 65000.0
-    sysData[M]['OD']['device'] = 'LASER650'
-
-    sysData[M]['Volume']['target'] = 20.0
+    sys_state.set_item_value(M, 'Volume', 'target', 20.0)
 
     clearTerminal(M)
     addTerminal(M,'System Initialised')
   
-    sysData[M]['Experiment']['ON']=0
-    sysData[M]['Experiment']['cycles']=0
-    sysData[M]['Experiment']['threadCount']=0
-    sysData[M]['Experiment']['startTime']=' Waiting '
-    sysData[M]['Experiment']['startTimeRaw']=0
-    sysData[M]['OD']['ON']=0
-    sysData[M]['OD']['Measuring']=0
-    sysData[M]['OD']['Integral']=0.0
-    sysData[M]['OD']['Integral2']=0.0
-    sysData[M]['Zigzag']['ON']=0
-    sysData[M]['Zigzag']['target']=0.0
-    sysData[M]['Zigzag']['SwitchPoint']=0
-    sysData[M]['GrowthRate']['current']=sysData[M]['GrowthRate']['default']
+    sys_state.set_item_value(M, 'Experiment', 'ON', 0)
+    sys_state.set_item_value(M, 'Experiment', 'cycles', 0)
+    sys_state.set_item_value(M, 'Experiment', 'threadCount', 0)
+    sys_state.set_item_value(M, 'Experiment', 'startTime', ' Waiting ')
+    sys_state.set_item_value(M, 'Experiment', 'startTimeRaw', 0)
+    sys_state.set_item_value(M, 'OD', 'ON', 0)
+    sys_state.set_item_value(M, 'OD', 'Measuring', 0)
+    sys_state.set_item_value(M, 'OD', 'Integral', 0.0)
+    sys_state.set_item_value(M, 'OD', 'Integral2', 0.0)
+    sys_state.set_item_value(M, 'Zigzag', 'ON', 0)
+    sys_state.set_item_value(M, 'Zigzag', 'target', 0.0)
+    sys_state.set_item_value(M, 'Zigzag', 'SwitchPoint', 0)
+    sys_state.set_item_value(M, 'GrowthRate', 'current', sys_state.get_item_value(M, 'GrowthRate', 'default', 0.0))
 
-    sysDevices[M]['Thermostat']['threadCount'] = 0
+    sys_state.set_device_item_value(M, 'Thermostat', 'threadCount', 0)
 
     for channel in AS7341_CHANNELS:
-        sysData[M]['AS7341']['channels'][channel] = 0
-        sysData[M]['AS7341']['spectrum'][channel] = 0
+        sys_state.set_item_value(M, 'AS7341', f'channels_{channel}', 0)
+        sys_state.set_item_value(M, 'AS7341', f'spectrum_{channel}', 0)
     for DAC in AS7341_DACS:
-        sysData[M]['AS7341']['current'][DAC] = 0
+        sys_state.set_item_value(M, 'AS7341', f'current_{DAC}', 0)
 
-    sysData[M]['ThermometerInternal']['current'] = 0.0
-    sysData[M]['ThermometerExternal']['current'] = 0.0
-    sysData[M]['ThermometerIR']['current'] = 0.0
+    sys_state.set_item_value(M, 'ThermometerInternal', 'current', 0.0)
+    sys_state.set_item_value(M, 'ThermometerExternal', 'current', 0.0)
+    sys_state.set_item_value(M, 'ThermometerIR', 'current', 0.0)
 
-    sysData[M]['time']['record'] = []
-    sysData[M]['OD']['record'] = []
-    sysData[M]['OD']['targetrecord'] = []
-    sysData[M]['Pump1']['record'] = []
-    sysData[M]['Pump2']['record'] = []
-    sysData[M]['Pump3']['record'] = []
-    sysData[M]['Pump4']['record'] = []
-    sysData[M]['Heat']['record'] = []
-    sysData[M]['Light']['record'] = []
-    sysData[M]['ThermometerInternal']['record'] = []
-    sysData[M]['ThermometerExternal']['record'] = []
-    sysData[M]['ThermometerIR']['record'] = []
-    sysData[M]['Thermostat']['record'] = []
+    sys_state.set_item_value(M, 'time', 'record', [])
+    sys_state.set_item_value(M, 'OD', 'record', [])
+    sys_state.set_item_value(M, 'OD', 'targetrecord', [])
+    sys_state.set_item_value(M, 'Pump1', 'record', [])
+    sys_state.set_item_value(M, 'Pump2', 'record', [])
+    sys_state.set_item_value(M, 'Pump3', 'record', [])
+    sys_state.set_item_value(M, 'Pump4', 'record', [])
+    sys_state.set_item_value(M, 'Heat', 'record', [])
+    sys_state.set_item_value(M, 'Light', 'record', [])
+    sys_state.set_item_value(M, 'ThermometerInternal', 'record', [])
+    sys_state.set_item_value(M, 'ThermometerExternal', 'record', [])
+    sys_state.set_item_value(M, 'ThermometerIR', 'record', [])
+    sys_state.set_item_value(M, 'Thermostat', 'record', [])
 
-    sysData[M]['GrowthRate']['record'] = []
+    sys_state.set_item_value(M, 'GrowthRate', 'record', [])
 
-    sysDevices[M]['ThermometerInternal']['device'] = I2C.get_i2c_device(0x18, 2)  # Get Thermometer on Bus 2!!!
-    sysDevices[M]['ThermometerExternal']['device'] = I2C.get_i2c_device(0x1b, 2)  # Get Thermometer on Bus 2!!!
-    sysDevices[M]['DAC']['device'] = I2C.get_i2c_device(0x48, 2)  # Get DAC on Bus 2!!!
-    sysDevices[M]['AS7341']['device'] = I2C.get_i2c_device(0x39, 2)  # Get OD Chip on Bus 2!!!!!
-    sysDevices[M]['Pumps']['device'] = I2C.get_i2c_device(0x61, 2)  # Get OD Chip on Bus 2!!!!!
-    sysDevices[M]['Pumps']['startup'] = 0
-    sysDevices[M]['Pumps']['frequency'] = 0x1e  # 200Hz PWM frequency
-    sysDevices[M]['PWM']['device'] = I2C.get_i2c_device(0x60, 2)  # Get OD Chip on Bus 2!!!!!
-    sysDevices[M]['PWM']['startup'] = 0
-    sysDevices[M]['PWM']['frequency'] = 0x03  # 0x14 = 300hz, 0x03 is 1526 Hz PWM frequency for fan/LEDs, maximum possible. Potentially dial this down if you are getting audible ringing in the device!
+    sys_state.set_device_item_value(M, 'ThermometerInternal', 'device', I2C.get_i2c_device(0x18, 2))  # Get Thermometer on Bus 2!!!
+    sys_state.set_device_item_value(M, 'ThermometerExternal', 'device', I2C.get_i2c_device(0x1b, 2))  # Get Thermometer on Bus 2!!!
+    sys_state.set_device_item_value(M, 'DAC', 'device', I2C.get_i2c_device(0x48, 2))  # Get DAC on Bus 2!!!
+    sys_state.set_device_item_value(M, 'AS7341', 'device', I2C.get_i2c_device(0x39, 2))  # Get OD Chip on Bus 2!!!!!
+    sys_state.set_device_item_value(M, 'Pumps', 'device', I2C.get_i2c_device(0x61, 2))  # Get OD Chip on Bus 2!!!!!
+    sys_state.set_device_item_value(M, 'Pumps', 'startup', 0)
+    sys_state.set_device_item_value(M, 'Pumps', 'frequency', 0x1e)  # 200Hz PWM frequency
+    sys_state.set_device_item_value(M, 'PWM', 'device', I2C.get_i2c_device(0x60, 2))  # Get OD Chip on Bus 2!!!!!
+    sys_state.set_device_item_value(M, 'PWM', 'startup', 0)
+    sys_state.set_device_item_value(M, 'PWM', 'frequency', 0x03)  # 0x14 = 300hz, 0x03 is 1526 Hz PWM frequency for fan/LEDs, maximum possible. Potentially dial this down if you are getting audible ringing in the device!
     # There is a tradeoff between large frequencies which can make capacitors in the 6V power regulation oscillate
     # audibly, and small frequencies which result in the number of LED "ON" cycles varying during measurements.
-    sysDevices[M]['ThermometerIR']['device'] = smbus.SMBus(bus=2)  # Set up SMBus thermometer
-    sysDevices[M]['ThermometerIR']['address'] = 0x5a
+    sys_state.set_device_item_value(M, 'ThermometerIR', 'device', smbus.SMBus(bus=2))  # Set up SMBus thermometer
+    sys_state.set_device_item_value(M, 'ThermometerIR', 'address', 0x5a)
 
     # This section of commented code is used for testing I2C communication integrity.
     # sysData[M]['present']=1
@@ -534,16 +559,17 @@ def initialise(M):
     config_file = "config/device_config.csv"
     device_config = load_device_config(config_file)
 
-    if sysData[M]['present'] == 1:
+    if sys_state.get_data_value(M, 'present', 0) == 1:
         # adjust sysData based on device config (if config exists)
         if device_config:
             try:
-                fit_data = device_config[sysData[M]['DeviceID']]
-                sysData[M]['OD0']['LASERa'] = float(fit_data.LASERa)
-                sysData[M]['OD0']['LASERb'] = float(fit_data.LASERb)
-                sysData[M]['DeviceName'] = fit_data.name
+                device_id = sys_state.get_data_value(M, 'DeviceID', '')
+                fit_data = device_config[device_id]
+                sys_state.set_item_value(M, 'OD0', 'LASERa', float(fit_data.LASERa))
+                sys_state.set_item_value(M, 'OD0', 'LASERb', float(fit_data.LASERb))
+                sys_state.set_data_value(M, 'DeviceName', fit_data.name)
             except KeyError:
-                logger_ctx.warning('config for device %s was not found!', sysData[M]['DeviceID'])
+                logger_ctx.warning('config for device %s was not found!', sys_state.get_data_value(M, 'DeviceID', ''))
         turnEverythingOff(M)
 
         V1_Present=0
@@ -608,16 +634,16 @@ def initialiseAll():
 def turnEverythingOff(M):
     # Function which turns off all actuation/hardware.
     for LED in LED_OUTPUTS_BASE:
-        sysData[M][LED]['ON']=0
+        sys_state.set_item_value(M, LED, 'ON', 0)
         
-    sysData[M]['LASER650']['ON']=0
-    sysData[M]['Pump1']['ON']=0
-    sysData[M]['Pump2']['ON']=0
-    sysData[M]['Pump3']['ON']=0
-    sysData[M]['Pump4']['ON']=0
-    sysData[M]['Stir']['ON']=0
-    sysData[M]['Heat']['ON']=0
-    sysData[M]['UV']['ON']=0
+    sys_state.set_item_value(M, 'LASER650', 'ON', 0)
+    sys_state.set_item_value(M, 'Pump1', 'ON', 0)
+    sys_state.set_item_value(M, 'Pump2', 'ON', 0)
+    sys_state.set_item_value(M, 'Pump3', 'ON', 0)
+    sys_state.set_item_value(M, 'Pump4', 'ON', 0)
+    sys_state.set_item_value(M, 'Stir', 'ON', 0)
+    sys_state.set_item_value(M, 'Heat', 'ON', 0)
+    sys_state.set_item_value(M, 'UV', 'ON', 0)
     
     I2CCom(M,'DAC',0,8,int('00000000',2),int('00000000',2),0)#Sets all DAC Channels to zero!!! 
     setPWM(M,'PWM',sysItems['All'],0,0)
@@ -642,11 +668,11 @@ def index():
     global sysData
     global sysItems
 
-    outputdata = sysData[sysItems['UIDevice']]
+    outputdata = sys_state.get_data(sysItems['UIDevice'])
     # sending the current beaglebone's name to UI
     outputdata['beaglebone_name'] = application.config['BEAGLEBONE_NAME']
     for M in DEVICE_IDS:
-        if sysData[M]['present'] == 1:
+        if sys_state.get_data_value(M, 'present', 0) == 1:
             outputdata['presentDevices'][M] = 1
         else:
             outputdata['presentDevices'][M] = 0
@@ -658,9 +684,9 @@ def getSysdata():
     # Similar to function above, packages data to be sent to UI.
     global sysData
     global sysItems
-    outputdata = sysData[sysItems['UIDevice']]
+    outputdata = sys_state.get_data(sysItems['UIDevice'])
     for M in DEVICE_IDS:
-        if sysData[M]['present'] == 1:
+        if sys_state.get_data_value(M, 'present', 0) == 1:
             outputdata['presentDevices'][M] = 1
         else:
             outputdata['presentDevices'][M] = 0
@@ -673,9 +699,9 @@ def changeDevice(M):
     global sysData
     global sysItems
     M = str(M)
-    if sysData[M]['present'] == 1:
+    if sys_state.get_data_value(M, 'present', 0) == 1:
         for Mb in DEVICE_IDS:
-            sysData[Mb]['UIDevice'] = M
+            sys_state.set_data_value(Mb, 'UIDevice', M)
 
         sysItems['UIDevice'] = M
 
@@ -691,14 +717,14 @@ def scanDevices(which):
 
     if which == "all":
         for M in DEVICE_IDS:
-            sysData[M]['present'] = 1
+            sys_state.set_data_value(M, 'present', 1)
             I2CCom(M, 'ThermometerInternal', 1, 16, 0x05, 0, 0)  # We arbitrarily poll the thermometer to see if anything is plugged in!
-            sysData[M]['DeviceID'] = GetID(M)
+            sys_state.set_data_value(M, 'DeviceID', GetID(M))
     else:
 
-        sysData[which]['present'] = 1
+        sys_state.set_data_value(which, 'present', 1)
         I2CCom(which, 'ThermometerInternal', 1, 16, 0x05, 0, 0)
-        sysData[which]['DeviceID'] = GetID(which)
+        sys_state.set_data_value(which, 'DeviceID', GetID(which))
 
     return '', 204
 
@@ -708,7 +734,7 @@ def GetID(M):
     global sysData
     M = str(M)
     ID = ''
-    if sysData[M]['present'] == 1:
+    if sys_state.get_data_value(M, 'present', 0) == 1:
         pt1 = str(I2CCom(M, 'ThermometerIR', 1, 0, 0x3C, 0, 1))
         pt2 = str(I2CCom(M, 'ThermometerIR', 1, 0, 0x3D, 0, 1))
         pt3 = str(I2CCom(M, 'ThermometerIR', 1, 0, 0x3E, 0, 1))
@@ -724,7 +750,8 @@ def addTerminal(M, strIn):
     logger_ctx.info(strIn)
     now = datetime.now()
     timeString = now.strftime("%Y-%m-%d %H:%M:%S ")
-    sysData[M]['Terminal']['text'] = timeString + ' - ' + str(strIn) + '</br>' + sysData[M]['Terminal']['text']
+    current_text = sys_state.get_item_value(M, 'Terminal', 'text', '')
+    sys_state.set_item_value(M, 'Terminal', 'text', timeString + ' - ' + str(strIn) + '</br>' + current_text)
 
 
 @application.route("/ClearTerminal/<M>", methods=['POST'])
@@ -735,8 +762,9 @@ def clearTerminal(M):
     if M == "0":
         M = sysItems['UIDevice']
 
-    sysData[M]['Terminal']['text'] = ''
-    addTerminal(M, f'Terminal on {M} ({sysData[M]["DeviceID"]}) Cleared')
+    sys_state.set_item_value(M, 'Terminal', 'text', '')
+    device_id = sys_state.get_data_value(M, 'DeviceID', '')
+    addTerminal(M, f'Terminal on {M} ({device_id}) Cleared')
     return '', 204
 
 
@@ -752,15 +780,15 @@ def SetFPMeasurement(item, Excite, Base, Emit1, Emit2, Gain):
     M = sysItems['UIDevice']
 
     if sys_state.get_item_value(M, FP, 'ON', 0) == 1:
-        sysData[M][FP]['ON'] = 0
+        sys_state.set_item_value(M, FP, 'ON', 0)
         return '', 204
     else:
-        sysData[M][FP]['ON'] = 1
-        sysData[M][FP]['LED'] = Excite
-        sysData[M][FP]['BaseBand'] = Base
-        sysData[M][FP]['Emit1Band'] = Emit1
-        sysData[M][FP]['Emit2Band'] = Emit2
-        sysData[M][FP]['Gain'] = Gain
+        sys_state.set_item_value(M, FP, 'ON', 1)
+        sys_state.set_item_value(M, FP, 'LED', Excite)
+        sys_state.set_item_value(M, FP, 'BaseBand', Base)
+        sys_state.set_item_value(M, FP, 'Emit1Band', Emit1)
+        sys_state.set_item_value(M, FP, 'Emit2Band', Emit2)
+        sys_state.set_item_value(M, FP, 'Gain', Gain)
         return '', 204
 
 
@@ -773,7 +801,8 @@ def SetOutputTarget(M, item, value):
     M = str(M)
     if M == "0":
         M = sysItems['UIDevice']
-    info_msg = f" Set item: {str(item)} to value {str(value)} on {M} ({sysData[M]['DeviceID']})"
+    device_id = sys_state.get_data(M).get('DeviceID', '')
+    info_msg = f" Set item: {str(item)} to value {str(value)} on {M} ({device_id})"
     logger_ctx.info(info_msg)
     
     # Clamp value to min/max range
@@ -802,7 +831,8 @@ def SetOutputOn(M, item, force):
     M = str(M)
     if M == "0":
         M = sysItems['UIDevice']
-    logger_ctx.info(f'device: {item} on {M} ({sysData[M]["DeviceID"]}), output is  {force} ')
+    device_id = sys_state.get_data(M).get('DeviceID', '')
+    logger_ctx.info(f'device: {item} on {M} ({device_id}), output is  {force} ')
     # The first statements are to force it on or off it the command is called in force mode (force implies it sets it to
     # a given state, regardless of what it is currently in)
     if force == 1:
@@ -837,7 +867,7 @@ def get_ledv_contribution(M, led_item):
     if ledv_target * ledv_on == 0:
         return 0.0
     if led_item == 'LEDB':
-        return ledv_target * sysData[M]['LEDV']['ScaleFactor']
+        return ledv_target * sys_state.get_item_value(M, 'LEDV', 'ScaleFactor', 0.0)
     elif led_item == 'LEDI':
         return ledv_target
     return 0.0
@@ -872,24 +902,25 @@ def SetOutput(M, item):
     elif item == 'UV':
         setPWM(M, 'PWM', sysItems[item], sys_state.get_effective_intensity(M, item), 0)
     elif item == 'Thermostat':
-        sysDevices[M][item]['thread'] = Thread(target=Thermostat, args=(M, item))
-        sysDevices[M][item]['thread'].setDaemon(True)
-        sysDevices[M][item]['thread'].start();
+        thread = Thread(target=Thermostat, args=(M, item))
+        thread.setDaemon(True)
+        sys_state.set_device_item_value(M, item, 'thread', thread)
+        thread.start();
 
     elif item in PUMPS:
         if sys_state.get_item_value(M, item, 'target', 0.0) == 0:
             sys_state.set_item_value(M, item, 'ON', 0)
-        sysDevices[M][item]['thread'] = Thread(target=PumpModulation, args=(M, item))
-
-        sysDevices[M][item]['thread'].setDaemon(True)
-        sysDevices[M][item]['thread'].start();
+        thread = Thread(target=PumpModulation, args=(M, item))
+        thread.setDaemon(True)
+        sys_state.set_device_item_value(M, item, 'thread', thread)
+        thread.start();
 
     elif (item=='OD'):
         SetOutputOn(M,'Pump1',0)
         SetOutputOn(M,'Pump2',0) #We turn pumps off when we switch OD state
     elif (item=='Zigzag'):
-        sysData[M]['Zigzag']['target']=5.0
-        sysData[M]['Zigzag']['SwitchPoint']=sysData[M]['Experiment']['cycles']
+        sys_state.set_item_value(M, 'Zigzag', 'target', 5.0)
+        sys_state.set_item_value(M, 'Zigzag', 'SwitchPoint', sys_state.get_item_value(M, 'Experiment', 'cycles', 0))
     
     elif item in LED_DIRECT_PWM:
         setPWM(M,'PWM',sysItems[item],sys_state.get_effective_intensity(M, item),0)
@@ -954,19 +985,21 @@ def PumpModulation(M, item):
         MB = M
         itemB = item
 
-    sysDevices[M][item]['threadCount'] = (sysDevices[M][item]['threadCount'] + 1) % 100  # Index of the particular thread running.
-    currentThread = sysDevices[M][item]['threadCount']
+    thread_count = (sys_state.get_device_item_value(M, item, 'threadCount', 0) + 1) % 100
+    sys_state.set_device_item_value(M, item, 'threadCount', thread_count)  # Index of the particular thread running.
+    currentThread = thread_count
 
-    while sysDevices[M][item]['active'] == 1:  # Idea is we will wait here if a previous thread on this pump is already running. Potentially all this 'active' business could be removed from this function.
+    while sys_state.get_device_item_value(M, item, 'active', 0) == 1:  # Idea is we will wait here if a previous thread on this pump is already running. Potentially all this 'active' business could be removed from this function.
         time.sleep(0.02)
 
     if abs(sys_state.get_effective_intensity(M, item)) != 1 and currentThread == sys_state.get_device_item_value(M, item, 'threadCount'):  # In all cases we turn things off to begin
-        sysDevices[M][item]['active'] = 1
-        setPWM(MB, 'Pumps', sysItems[itemB]['In1'], 0.0 * float(sysData[M][item]['ON']), 0)
-        setPWM(MB, 'Pumps', sysItems[itemB]['In2'], 0.0 * float(sysData[M][item]['ON']), 0)
-        setPWM(MB, 'Pumps', sysItems[itemB]['In1'], 0.0 * float(sysData[M][item]['ON']), 0)
-        setPWM(MB, 'Pumps', sysItems[itemB]['In2'], 0.0 * float(sysData[M][item]['ON']), 0)
-        sysDevices[M][item]['active'] = 0
+        sys_state.set_device_item_value(M, item, 'active', 1)
+        on_value = float(sys_state.get_item_value(M, item, 'ON', 0))
+        setPWM(MB, 'Pumps', sysItems[itemB]['In1'], 0.0 * on_value, 0)
+        setPWM(MB, 'Pumps', sysItems[itemB]['In2'], 0.0 * on_value, 0)
+        setPWM(MB, 'Pumps', sysItems[itemB]['In1'], 0.0 * on_value, 0)
+        setPWM(MB, 'Pumps', sysItems[itemB]['In2'], 0.0 * on_value, 0)
+        sys_state.set_device_item_value(M, item, 'active', 0)
     if sys_state.get_item_value(M, item, 'ON', 0) == 0:
         return
 
@@ -982,25 +1015,28 @@ def PumpModulation(M, item):
     #    time.sleep(waittime+1.0)
 
     if sys_state.get_item_value(M, item, 'target', 0.0) > 0 and currentThread == sys_state.get_device_item_value(M, item, 'threadCount'):  # Turning on pumps in forward direction
-        sysDevices[M][item]['active'] = 1
-        setPWM(MB, 'Pumps', sysItems[itemB]['In1'], 1.0 * float(sys_state.get_item_value(M, item, 'ON', 0)), 0)
-        setPWM(MB, 'Pumps', sysItems[itemB]['In2'], 0.0 * float(sys_state.get_item_value(M, item, 'ON', 0)), 0)
-        sysDevices[M][item]['active'] = 0
+        sys_state.set_device_item_value(M, item, 'active', 1)
+        on_value = float(sys_state.get_item_value(M, item, 'ON', 0))
+        setPWM(MB, 'Pumps', sysItems[itemB]['In1'], 1.0 * on_value, 0)
+        setPWM(MB, 'Pumps', sysItems[itemB]['In2'], 0.0 * on_value, 0)
+        sys_state.set_device_item_value(M, item, 'active', 0)
     elif sys_state.get_item_value(M, item, 'target', 0.0) < 0 and currentThread == sys_state.get_device_item_value(M, item, 'threadCount'):  # Or backward direction.
-        sysDevices[M][item]['active'] = 1
-        setPWM(MB, 'Pumps', sysItems[itemB]['In1'], 0.0 * float(sys_state.get_item_value(M, item, 'ON', 0)), 0)
-        setPWM(MB, 'Pumps', sysItems[itemB]['In2'], 1.0 * float(sys_state.get_item_value(M, item, 'ON', 0)), 0)
-        sysDevices[M][item]['active'] = 0
+        sys_state.set_device_item_value(M, item, 'active', 1)
+        on_value = float(sys_state.get_item_value(M, item, 'ON', 0))
+        setPWM(MB, 'Pumps', sysItems[itemB]['In1'], 0.0 * on_value, 0)
+        setPWM(MB, 'Pumps', sysItems[itemB]['In2'], 1.0 * on_value, 0)
+        sys_state.set_device_item_value(M, item, 'active', 0)
 
     time.sleep(Ontime)
 
     if abs(sys_state.get_item_value(M, item, 'target', 0.0)) != 1 and currentThread == sys_state.get_device_item_value(M, item, 'threadCount'):  # Turning off pumps at appropriate time.
-        sysDevices[M][item]['active'] = 1
-        setPWM(MB, 'Pumps', sysItems[itemB]['In1'], 0.0 * float(sysData[M][item]['ON']), 0)
-        setPWM(MB, 'Pumps', sysItems[itemB]['In2'], 0.0 * float(sysData[M][item]['ON']), 0)
-        setPWM(MB, 'Pumps', sysItems[itemB]['In1'], 0.0 * float(sysData[M][item]['ON']), 0)
-        setPWM(MB, 'Pumps', sysItems[itemB]['In2'], 0.0 * float(sysData[M][item]['ON']), 0)
-        sysDevices[M][item]['active'] = 0
+        sys_state.set_device_item_value(M, item, 'active', 1)
+        on_value = float(sys_state.get_item_value(M, item, 'ON', 0))
+        setPWM(MB, 'Pumps', sysItems[itemB]['In1'], 0.0 * on_value, 0)
+        setPWM(MB, 'Pumps', sysItems[itemB]['In2'], 0.0 * on_value, 0)
+        setPWM(MB, 'Pumps', sysItems[itemB]['In1'], 0.0 * on_value, 0)
+        setPWM(MB, 'Pumps', sysItems[itemB]['In2'], 0.0 * on_value, 0)
+        sys_state.set_device_item_value(M, item, 'active', 0)
 
     Time2 = datetime.now()
     elapsedTime = Time2 - Time1
@@ -1010,9 +1046,10 @@ def PumpModulation(M, item):
         time.sleep(Offtime)
 
     if sys_state.get_item_value(M, item, 'ON', 0) == 1 and sys_state.get_device_item_value(M, item, 'threadCount') == currentThread:  # If pumps need to keep going, this starts a new pump thread.
-        sysDevices[M][item]['thread'] = Thread(target=PumpModulation, args=(M, item))
-        sysDevices[M][item]['thread'].setDaemon(True)
-        sysDevices[M][item]['thread'].start();
+        thread = Thread(target=PumpModulation, args=(M, item))
+        thread.setDaemon(True)
+        sys_state.set_device_item_value(M, item, 'thread', thread)
+        thread.start();
 
 
 def Thermostat(M, item):
@@ -1021,8 +1058,9 @@ def Thermostat(M, item):
     global sysItems
     global sysDevices
     ON = sys_state.get_item_value(M, item, 'ON', 0)
-    sysDevices[M][item]['threadCount'] = (sysDevices[M][item]['threadCount'] + 1) % 100
-    currentThread = sysDevices[M][item]['threadCount']
+    thread_count = (sys_state.get_device_item_value(M, item, 'threadCount', 0) + 1) % 100
+    sys_state.set_device_item_value(M, item, 'threadCount', thread_count)
+    currentThread = thread_count
 
     if ON == 0:
         SetOutputOn(M, 'Heat', 0)
@@ -1039,7 +1077,7 @@ def Thermostat(M, item):
     MPC = 0
     if MediaTemp > 0.0:
         Tdiff = CurrentTemp - MediaTemp
-        Pumping = sys_state.get_effective_intensity(M, 'Pump1') * float(sysData[M]['OD']['ON'])
+        Pumping = sys_state.get_effective_intensity(M, 'Pump1') * float(sys_state.get_item_value(M, 'OD', 'ON', 0))
         Gain = 2.5
         MPC = Gain * Tdiff * Pumping
 
@@ -1083,9 +1121,10 @@ def Thermostat(M, item):
     time.sleep(dt)
 
     if sys_state.get_item_value(M, item, 'ON', 0) == 1 and sys_state.get_device_item_value(M, item, 'threadCount') == currentThread:
-        sysDevices[M][item]['thread'] = Thread(target=Thermostat, args=(M, item))
-        sysDevices[M][item]['thread'].setDaemon(True)
-        sysDevices[M][item]['thread'].start();
+        thread = Thread(target=Thermostat, args=(M, item))
+        thread.setDaemon(True)
+        sys_state.set_device_item_value(M, item, 'thread', thread)
+        thread.start();
     else:
         sys_state.set_item_value(M, 'Heat', 'ON', 0)
         sys_state.set_item_value(M, 'Heat', 'target', 0)
@@ -1101,7 +1140,8 @@ def direction(M, item):
         M = sysItems['UIDevice']
     sys_state.set_item_value(M, item, 'target', -1.0 * sys_state.get_item_value(M, item, 'target', 0.0))
     if sys_state.get_item_value(M, 'OD', 'ON', 0) == 1:
-        sysData[M][item]['direction'] = -1.0 * sysData[M][item]['direction']
+        current_direction = sys_state.get_item_value(M, item, 'direction', 1.0)
+        sys_state.set_item_value(M, item, 'direction', -1.0 * current_direction)
 
     return '', 204
 
@@ -1165,18 +1205,21 @@ def AS7341Read(M, Gain, ISteps, reset):
     # print(str(ASTATUS))
     # print(str(Status2))
 
-    sysData[M]['AS7341']['current']['ADC0'] = int(bin(C0_H)[2:].zfill(8) + bin(C0_L)[2:].zfill(8), 2)
-    sysData[M]['AS7341']['current']['ADC1'] = int(bin(C1_H)[2:].zfill(8) + bin(C1_L)[2:].zfill(8), 2)
-    sysData[M]['AS7341']['current']['ADC2'] = int(bin(C2_H)[2:].zfill(8) + bin(C2_L)[2:].zfill(8), 2)
-    sysData[M]['AS7341']['current']['ADC3'] = int(bin(C3_H)[2:].zfill(8) + bin(C3_L)[2:].zfill(8), 2)
-    sysData[M]['AS7341']['current']['ADC4'] = int(bin(C4_H)[2:].zfill(8) + bin(C4_L)[2:].zfill(8), 2)
-    sysData[M]['AS7341']['current']['ADC5'] = int(bin(C5_H)[2:].zfill(8) + bin(C5_L)[2:].zfill(8), 2)
+    as7341 = sys_state.get_item_data(M, 'AS7341')
+    current = as7341.get('current', {})
+    current['ADC0'] = int(bin(C0_H)[2:].zfill(8) + bin(C0_L)[2:].zfill(8), 2)
+    current['ADC1'] = int(bin(C1_H)[2:].zfill(8) + bin(C1_L)[2:].zfill(8), 2)
+    current['ADC2'] = int(bin(C2_H)[2:].zfill(8) + bin(C2_L)[2:].zfill(8), 2)
+    current['ADC3'] = int(bin(C3_H)[2:].zfill(8) + bin(C3_L)[2:].zfill(8), 2)
+    current['ADC4'] = int(bin(C4_H)[2:].zfill(8) + bin(C4_L)[2:].zfill(8), 2)
+    current['ADC5'] = int(bin(C5_H)[2:].zfill(8) + bin(C5_L)[2:].zfill(8), 2)
 
     # TODO ZAT this warning was moved to GetLight(), the one below can be removed in a future version.
-    if (sysData[M]['AS7341']['current']['ADC0'] == 65535 or sysData[M]['AS7341']['current']['ADC1'] == 65535 or
-            sysData[M]['AS7341']['current']['ADC2'] == 65535 or sysData[M]['AS7341']['current']['ADC3'] == 65535 or
-            sysData[M]['AS7341']['current']['ADC4'] == 65535 or sysData[M]['AS7341']['current']['ADC5'] == 65535):
-        info_msg = f' Spectrometer measurement was saturated on device {M} ({sysData[M]["DeviceID"]})'
+    if (current.get('ADC0') == 65535 or current.get('ADC1') == 65535 or
+            current.get('ADC2') == 65535 or current.get('ADC3') == 65535 or
+            current.get('ADC4') == 65535 or current.get('ADC5') == 65535):
+        device_id = sys_state.get_data_value(M, 'DeviceID', '')
+        info_msg = f' Spectrometer measurement was saturated on device {M} ({device_id})'
         logger_ctx.info(info_msg)  # Not sure if this saturation check above actually works correctly...
     return 0
 
@@ -1195,12 +1238,13 @@ def AS7341SMUX(M, device, data1, data2):
     for a in Addresses:
         A = sysItems['AS7341'][a]['A']
         B = sysItems['AS7341'][a]['B']
+        channels = sys_state.get_item_data(M, 'AS7341').get('channels', {})
         if A != 'U':
-            As = sysData[M]['AS7341']['channels'][A]
+            As = channels.get(A, 0)
         else:
             As = 0
         if B != 'U':
-            Bs = sysData[M]['AS7341']['channels'][B]
+            Bs = channels.get(B, 0)
         else:
             Bs = 0
         Ab = str(bin(As))[2:].zfill(4)
@@ -1222,16 +1266,17 @@ def GetSpectrum(M, Gain):
         M = sysItems['UIDevice']
     out = GetLight(M, ['nm410', 'nm440', 'nm470', 'nm510', 'nm550', 'nm583'], Gain, 255)
     out2 = GetLight(M, ['nm620', 'nm670', 'CLEAR', 'NIR', 'DARK'], Gain, 255)
-    sysData[M]['AS7341']['spectrum']['nm410'] = out[0]
-    sysData[M]['AS7341']['spectrum']['nm440'] = out[1]
-    sysData[M]['AS7341']['spectrum']['nm470'] = out[2]
-    sysData[M]['AS7341']['spectrum']['nm510'] = out[3]
-    sysData[M]['AS7341']['spectrum']['nm550'] = out[4]
-    sysData[M]['AS7341']['spectrum']['nm583'] = out[5]
-    sysData[M]['AS7341']['spectrum']['nm620'] = out2[0]
-    sysData[M]['AS7341']['spectrum']['nm670'] = out2[1]
-    sysData[M]['AS7341']['spectrum']['CLEAR'] = out2[2]
-    sysData[M]['AS7341']['spectrum']['NIR'] = out2[3]
+    spectrum = sys_state.get_item_data(M, 'AS7341').get('spectrum', {})
+    spectrum['nm410'] = out[0]
+    spectrum['nm440'] = out[1]
+    spectrum['nm470'] = out[2]
+    spectrum['nm510'] = out[3]
+    spectrum['nm550'] = out[4]
+    spectrum['nm583'] = out[5]
+    spectrum['nm620'] = out2[0]
+    spectrum['nm670'] = out2[1]
+    spectrum['CLEAR'] = out2[2]
+    spectrum['NIR'] = out2[3]
 
     return '', 204
 
@@ -1240,12 +1285,13 @@ def GetLight(M, wavelengths, Gain, ISteps):
     # Runs spectrometer measurement and puts data into appropriate structure.
     global sysData
     M = str(M)
+    channels = sys_state.get_item_data(M, 'AS7341').get('channels', {})
     for channel in AS7341_CHANNELS:
-        sysData[M]['AS7341']['channels'][channel] = 0  # First we set all measurement ADC indexes to zero.
+        channels[channel] = 0  # First we set all measurement ADC indexes to zero.
     index = 1;
     for wavelength in wavelengths:
         if wavelength != "OFF":
-            sysData[M]['AS7341']['channels'][wavelength] = index  # Now assign ADCs to each of the channel where needed.
+            channels[wavelength] = index  # Now assign ADCs to each of the channel where needed.
         index = index + 1
 
     success = 0
@@ -1259,17 +1305,20 @@ def GetLight(M, wavelengths, Gain, ISteps):
             success = success + 1
             if success == 2:
                 logger_ctx.log_device_event(logging.WARNING, M, 'AS7341 measurement failed twice, setting unity values')
-                sysData[M]['AS7341']['current']['ADC0'] = 1
+                current = sys_state.get_item_data(M, 'AS7341').get('current', {})
+                current['ADC0'] = 1
                 for DAC in AS7341_DACS[1:]:
-                    sysData[M]['AS7341']['current'][DAC] = 0
+                    current[DAC] = 0
 
     output = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     index = 0
+    current = sys_state.get_item_data(M, 'AS7341').get('current', {})
     for wavelength in wavelengths:
         if wavelength != "OFF":
-            output[index] = sysData[M]['AS7341']['current'][AS7341_DACS[index]]
+            output[index] = current.get(AS7341_DACS[index], 0.0)
             if output == 65535:
-                info_msg = f' Spectrometer at {wavelength} wavelength was saturated on device {M} ({sysData[M]["DeviceID"]})'
+                device_id = sys_state.get_data_value(M, 'DeviceID', '')
+                info_msg = f' Spectrometer at {wavelength} wavelength was saturated on device {M} ({device_id})'
                 logger_ctx.info(info_msg)
         index = index + 1
 
@@ -1296,12 +1345,12 @@ def SetCustom(Program, Status):
     if sys_state.get_item_value(M, item, 'ON', 0) == 1:
         sys_state.set_item_value(M, item, 'ON', 0)
     else:
-        sysData[M][item]['Program'] = str(Program)
-        sysData[M][item]['Status'] = float(Status)
+        sys_state.set_item_value(M, item, 'Program', str(Program))
+        sys_state.set_item_value(M, item, 'Status', float(Status))
         sys_state.set_item_value(M, item, 'ON', 1)
-        sysData[M][item]['param1'] = 0.0  # Thus parameters get reset each time you restart your program.
-        sysData[M][item]['param2'] = 0.0
-        sysData[M][item]['param3'] = 0.0
+        sys_state.set_item_value(M, item, 'param1', 0.0)  # Thus parameters get reset each time you restart your program.
+        sys_state.set_item_value(M, item, 'param2', 0.0)
+        sys_state.set_item_value(M, item, 'param3', 0.0)
     return '', 204
 
 
@@ -1311,7 +1360,8 @@ def CustomProgram(M):
     # to allow these parameters to easily be varied on the fly.
     global sysData
     M = str(M)
-    program = sysData[M]['Custom']['Program']
+    program = sys_state.get_item_value(M, 'Custom', 'Program', '')
+    device_id = sys_state.get_data_value(M, 'DeviceID', '')
     # Subsequent few lines reads in external parameters from a file if you are using any.
     fname = 'InputParameters_%s.csv' % M
 
@@ -1319,31 +1369,31 @@ def CustomProgram(M):
         reader = csv.reader(f)
         listin = list(reader)
     Params = listin[0]
-    addTerminal(M, f'Running Program = {str(program)} on device {M} ({sysData[M]["DeviceID"]}) ')
+    addTerminal(M, f'Running Program = {str(program)} on device {M} ({device_id}) ')
 
     if program == "C1":  # Optogenetic Integral Control Program
         integral = 0.0  # Integral in integral controller
         green = 0.0  # Intensity of Green actuation
         red = 0.0  # Intensity of red actuation.
-        GFPNow = sysData[M]['FP1']['Emit1']
-        GFPTarget = sysData[M]['Custom']['Status']  # This is the controller setpoint.
+        GFPNow = sys_state.get_item_value(M, 'FP1', 'Emit1', 0.0)
+        GFPTarget = sys_state.get_item_value(M, 'Custom', 'Status', 0.0)  # This is the controller setpoint.
         error = GFPTarget - GFPNow
         if error > 0.0075:
             green = 1.0
             red = 0.0
-            sysData[M]['Custom']['param3'] = 0.0
+            sys_state.set_item_value(M, 'Custom', 'param3', 0.0)
         elif error < -0.0075:
             green = 0.0
             red = 1.0
-            sysData[M]['Custom']['param3'] = 0.0
+            sys_state.set_item_value(M, 'Custom', 'param3', 0.0)
         else:
             red = 1.0
             balance = float(Params[0])  # our guess at green light level to get 50% expression.
             KI = float(Params[1])
             KP = float(Params[2])
-            integral = sysData[M]['Custom']['param3'] + error * KI
+            integral = sys_state.get_item_value(M, 'Custom', 'param3', 0.0) + error * KI
             green = balance + KP * error + integral
-            sysData[M]['Custom']['param3'] = integral
+            sys_state.set_item_value(M, 'Custom', 'param3', integral)
 
         GreenThread = Thread(target=CustomLEDCycle, args=(M, 'LEDD', green))
         GreenThread.setDaemon(True)
@@ -1351,74 +1401,74 @@ def CustomProgram(M):
         RedThread = Thread(target=CustomLEDCycle, args=(M, 'LEDF', red))
         RedThread.setDaemon(True)
         RedThread.start();
-        sysData[M]['Custom']['param1'] = green
-        sysData[M]['Custom']['param2'] = red
+        sys_state.set_item_value(M, 'Custom', 'param1', green)
+        sys_state.set_item_value(M, 'Custom', 'param2', red)
         addTerminal(M, 'Program on %s (%s) = %s green= %s red= %s integral= %s'
-                    % (M, sysData[M]['DeviceID'], str(program), str(green), str(red), str(integral)))
+                % (M, device_id, str(program), str(green), str(red), str(integral)))
 
     elif program == "C2":  # UV Integral Control Program
         integral = 0.0  # Integral in integral controller
         UV = 0.0  # Intensity of Green actuation
-        GrowthRate = sysData[M]['GrowthRate']['current']
-        GrowthTarget = sysData[M]['Custom']['Status']  # This is the controller setpoint.
+        GrowthRate = sys_state.get_item_value(M, 'GrowthRate', 'current', 0.0)
+        GrowthTarget = sys_state.get_item_value(M, 'Custom', 'Status', 0.0)  # This is the controller setpoint.
         error = GrowthTarget - GrowthRate
         KP = float(Params[0])  # Past data suggest value of ~0.005
         KI = float(Params[1])  # Past data suggest value of ~2e-5
-        integral = sysData[M]['Custom']['param2'] + error * KI
+        integral = sys_state.get_item_value(M, 'Custom', 'param2', 0.0) + error * KI
         if integral > 0:
             integral = 0.0
-        sysData[M]['Custom']['param2'] = integral
+        sys_state.set_item_value(M, 'Custom', 'param2', integral)
         UV = -1.0 * (KP * error + integral)
-        sysData[M]['Custom']['param1'] = UV
+        sys_state.set_item_value(M, 'Custom', 'param1', UV)
         SetOutputTarget(M, 'UV', UV)
         SetOutputOn(M, 'UV', 1)
         addTerminal(M, 'Program on %s (%s)= %s UV= %s integral= %s'
-                    % (M, sysData[M]['DeviceID'], str(program), str(UV), str(integral)))
+                    % (M, device_id, str(program), str(UV), str(integral)))
 
     elif program == "C3":  # UV Integral Control Program Mk 2
-        integral = sysData[M]['Custom']['param2']  # Integral in integral controller
-        integral2 = sysData[M]['Custom']['param3']  # Second integral controller
+        integral = sys_state.get_item_value(M, 'Custom', 'param2', 0.0)  # Integral in integral controller
+        integral2 = sys_state.get_item_value(M, 'Custom', 'param3', 0.0)  # Second integral controller
         UV = 0.0  # Intensity of UV
-        GrowthRate = sysData[M]['GrowthRate']['current']
-        GrowthTarget = sysData[M]['Custom']['Status']  # This is the controller setpoint.
+        GrowthRate = sys_state.get_item_value(M, 'GrowthRate', 'current', 0.0)
+        GrowthTarget = sys_state.get_item_value(M, 'Custom', 'Status', 0.0)  # This is the controller setpoint.
         error = GrowthTarget - GrowthRate
         KP = float(Params[0])  # Past data suggest value of ~0.005
         KI = float(Params[1])  # Past data suggest value of ~2e-5
         KI2 = float(Params[2])
-        integral = sysData[M]['Custom']['param2'] + error * KI
+        integral = sys_state.get_item_value(M, 'Custom', 'param2', 0.0) + error * KI
         if integral > 0:
             integral = 0.0
 
         if abs(error) < 0.3:  # This is a second high-gain integrator which only gets cranking along when we are close to the target.
-            integral2 = sysData[M]['Custom']['param3'] + error * KI2
+            integral2 = sys_state.get_item_value(M, 'Custom', 'param3', 0.0) + error * KI2
         if integral2 > 0:
             integral2 = 0.0
 
-        sysData[M]['Custom']['param2'] = integral
-        sysData[M]['Custom']['param3'] = integral2
+        sys_state.set_item_value(M, 'Custom', 'param2', integral)
+        sys_state.set_item_value(M, 'Custom', 'param3', integral2)
         UV = -1.0 * (KP * error + integral + integral2)
         m = 50.0
         UV = (1.0 / m) * (math.exp(m * UV) - 1.0)  # Basically this is to force the UV level to increase exponentially!
-        sysData[M]['Custom']['param1'] = UV
+        sys_state.set_item_value(M, 'Custom', 'param1', UV)
         SetOutputTarget(M, 'UV', UV)
         SetOutputOn(M, 'UV', 1)
         addTerminal(M, 'Program on %s (%s) = %s UV= %s integral= %s'
-                    % (M, sysData[M]['DeviceID'], str(program), str(UV), str(integral)))
+                    % (M, device_id, str(program), str(UV), str(integral)))
     elif program == "C4":  # UV Integral Control Program Mk 4
         rategain = float(Params[0])
-        timept = sysData[M]['Custom']['Status']  # This is the timestep as we follow in minutes
+        timept = sys_state.get_item_value(M, 'Custom', 'Status', 0.0)  # This is the timestep as we follow in minutes
 
         UV = 0.001 * math.exp(timept * rategain)  # So we just exponentially increase UV over time!
-        sysData[M]['Custom']['param1'] = UV
+        sys_state.set_item_value(M, 'Custom', 'param1', UV)
         SetOutputTarget(M, 'UV', UV)
         SetOutputOn(M, 'UV', 1)
 
         timept = timept + 1
-        sysData[M]['Custom']['Status'] = timept
+        sys_state.set_item_value(M, 'Custom', 'Status', timept)
 
     elif program == "C5":  # UV Dosing program
-        timept = int(sysData[M]['Custom']['Status'])  # This is the timestep as we follow in minutes
-        sysData[M]['Custom']['Status'] = timept + 1  # Increment time as we have entered the loop another time!
+        timept = int(sys_state.get_item_value(M, 'Custom', 'Status', 0))  # This is the timestep as we follow in minutes
+        sys_state.set_item_value(M, 'Custom', 'Status', timept + 1)  # Increment time as we have entered the loop another time!
 
         Pump2Ontime = sys_state.get_item_value(M, 'Experiment', 'cycleTime', 0.0) * 1.05 * abs(sys_state.get_item_value(M, 'Pump2', 'target', 0.0)) * sys_state.get_item_value(M, 'Pump2', 'ON', 0) + 0.5  # The amount of time Pump2 is going to be on for following RegulateOD above.
         time.sleep(Pump2Ontime)  # Pause here is to prevent output pumping happening at the same time as stirring.
@@ -1429,7 +1479,7 @@ def CustomProgram(M):
             Dose0 = float(Params[0])
             Dose = Dose0 * (2.0 ** float(iters))  # UV Dose, in terms of amount of time UV should be left on at 1.0 intensity.
             addTerminal(M, 'Gave dose %s at iteration %s on device %s (%s)'
-                        % (str(Dose), str(iters), M, sysData[M]['DeviceID']))
+                        % (str(Dose), str(iters), M, device_id))
 
             if Dose < 30.0:
                 powerlvl = Dose / 30.0
@@ -1443,8 +1493,8 @@ def CustomProgram(M):
             SetOutputOn(M, 'UV', 0)  # Deactivate UV
 
     elif program == "C6":  # UV Dosing program 2 - constant value!
-        timept = int(sysData[M]['Custom']['Status'])  # This is the timestep as we follow in minutes
-        sysData[M]['Custom']['Status'] = timept + 1  # Increment time as we have entered the loop another time!
+        timept = int(sys_state.get_item_value(M, 'Custom', 'Status', 0))  # This is the timestep as we follow in minutes
+        sys_state.set_item_value(M, 'Custom', 'Status', timept + 1)  # Increment time as we have entered the loop another time!
 
         Pump2Ontime = sys_state.get_item_value(M, 'Experiment', 'cycleTime', 0.0) * 1.05 * abs(sys_state.get_item_value(M, 'Pump2', 'target', 0.0)) * sys_state.get_item_value(M, 'Pump2', 'ON', 0) + 0.5  # The amount of time Pump2 is going to be on for following RegulateOD above.
         time.sleep(Pump2Ontime)  # Pause here is to prevent output pumping happening at the same time as stirring.
@@ -1458,7 +1508,7 @@ def CustomProgram(M):
             Dose0 = float(Params[0])
             Dose = Dose0 * (2.0 ** float(iters))  # UV Dose, in terms of amount of time UV should be left on at 1.0 intensity.
             addTerminal(M, 'Gave dose %s at iteration %s on device %s (%s)'
-                        % (str(Dose), str(iters), M, sysData[M]['DeviceID']))
+                        % (str(Dose), str(iters), M, device_id))
 
             if Dose < 30.0:
                 powerlvl = Dose / 30.0
@@ -1497,10 +1547,10 @@ def SetLightActuation(Excite):
     item = "Light"
     if sys_state.get_item_value(M, item, 'ON', 0) == 1:
         sys_state.set_item_value(M, item, 'ON', 0)
-        SetOutputOn(M, sysData[M][item]['Excite'], 0)  # In case the current LED is on we need to make sure it turns off
+        SetOutputOn(M, sys_state.get_item_value(M, item, 'Excite', ''), 0)  # In case the current LED is on we need to make sure it turns off
         return '', 204
     else:
-        sysData[M][item]['Excite'] = str(Excite)
+        sys_state.set_item_value(M, item, 'Excite', str(Excite))
         sys_state.set_item_value(M, item, 'ON', 1)
         return '', 204
 
@@ -1510,8 +1560,8 @@ def LightActuation(M, toggle):
     global sysData
     M = str(M)
     toggle = int(toggle)
-    LEDChoice = sysData[M]['Light']['Excite']
-    if toggle == 1 and sysData[M]['Light']['ON'] == 1:
+    LEDChoice = sys_state.get_item_value(M, 'Light', 'Excite', '')
+    if toggle == 1 and sys_state.get_item_value(M, 'Light', 'ON', 0) == 1:
         SetOutputOn(M, LEDChoice, 1)
     else:
         SetOutputOn(M, LEDChoice, 0)
@@ -1571,12 +1621,14 @@ def CharacteriseDevice2(M):
             SetOutputOn(M, item, 0)
             logger_ctx.debug('%s power level: %s', item, power)
             for band in bands:
-                result[item][band].append(int(sysData[M]['AS7341']['spectrum'][band]))
-            addTerminal(M, 'Measured Item on %s (%s) = %s at power %s'
-                        % (M, sysData[M]['DeviceID'], str(item), str(power)))
+                spectrum_val = sys_state.get_item_value(M, 'AS7341', f'spectrum_{band}', 0)
+                result[item][band].append(int(spectrum_val))
+            device_id = sys_state.get_data_value(M, 'DeviceID', '')
+            addTerminal(M, f'Measured Item on {M} ({device_id}) = {str(item)} at power {str(power)}')
             time.sleep(0.05)
 
-    filename = f'characterisation_data_{M}_{sysData[M]["DeviceID"]}.txt'
+    device_id = sys_state.get_data_value(M, 'DeviceID', '')
+    filename = f'characterisation_data_{M}_{device_id}.txt'
     with open(filename, 'w') as f:
         simplejson.dump(result, f)
     return
@@ -1596,7 +1648,7 @@ def I2CCom(M, device, rw, hl, data1, data2, SMBUSFLAG):
     global sysData
 
     global sysDevices
-    if sysData[M]['present'] == 0:  # Something stupid has happened in software if this is the case!
+    if sys_state.get_data_value(M, 'present', 0) == 0:  # Something stupid has happened in software if this is the case!
         logger_ctx.log_device_event(logging.CRITICAL, M, 'Trying to communicate with absent device - bug in software! Disabling hardware and software!')
         sysItems['Watchdog']['ON'] = 0  # Basically this will crash all the electronics and the software.
         out = 0
@@ -1616,8 +1668,8 @@ def I2CCom(M, device, rw, hl, data1, data2, SMBUSFLAG):
             check = (sysItems['Multiplexer']['device'].readRaw8())  # We check that the Multiplexer is indeed connected to the correct channel.
             if check == int(sysItems['Multiplexer'][M], 2):
                 tries = -1
-                logger_ctx.debug('Connection to mux on %s (%s) to channel %s has been established'
-                                         % (M, sysData[M]['DeviceID'], check))
+                device_id = sys_state.get_data_value(M, 'DeviceID', '')
+                logger_ctx.debug(f'Connection to mux on {M} ({device_id}) to channel {check} has been established')
             else:
                 tries = tries + 1
                 time.sleep(0.02)
@@ -1654,47 +1706,49 @@ def I2CCom(M, device, rw, hl, data1, data2, SMBUSFLAG):
 
     while tries != -1:  # We now do appropriate read/write on the bus.
         try:
+            device_info = sys_state.get_device_item(M, device)
+            device_handle = device_info.get('device')
             if SMBUSFLAG == 0:
                 if rw == 1:
                     if hl == 8:
-                        out = int(sysDevices[M][device]['device'].readU8(data1))
+                        out = int(device_handle.readU8(data1))
                     elif hl == 16:
-                        out = int(sysDevices[M][device]['device'].readU16(data1, data2))
+                        out = int(device_handle.readU16(data1, data2))
                 else:
                     if hl == 8:
-                        sysDevices[M][device]['device'].write8(data1, data2)
+                        device_handle.write8(data1, data2)
                         out = 1
                     elif hl == 16:
-                        sysDevices[M][device]['device'].write16(data1, data2)
+                        device_handle.write16(data1, data2)
                         out = 1
 
             elif SMBUSFLAG == 1:
-                out = sysDevices[M][device]['device'].read_word_data(sysDevices[M][device]['address'], data1)
+                out = device_handle.read_word_data(device_info.get('address'), data1)
             tries = -1
         except:  # If the above fails then we can try again (a limited number of times)
             tries = tries + 1
 
             if device != "ThermometerInternal":
-                warn_msg = f'Failed {device} comms {tries} times on {M} ({sysData[M]["DeviceID"]})'
+                warn_msg = f'Failed {device} comms {tries} times on {M} ({sys_state.get_data_value(M, "DeviceID", "")})'
                 logger_ctx.warning(warn_msg)
                 time.sleep(0.02)
             if device == 'AS7341':
                 warn_msg = ' Failed AS7341 in I2CCom while trying to send %s and %s on %s (%s)' \
-                           % (str(data1), str(data2), M, sysData[M]['DeviceID'])
+                           % (str(data1), str(data2), M, sys_state.get_data_value(M, 'DeviceID', ''))
                 logger_ctx.warning(warn_msg)
                 out = -1
                 tries = -1
 
         if tries > 2 and device == "ThermometerInternal":  # We don't allow the internal thermometer to fail, since this is what we are using to see if devices are plugged in at all.
             out = 0
-            sysData[M]['present'] = 0
+            sys_state.set_data_value(M, 'present', 0)
             tries = -1
         if tries >= application.config['DEVICE_COMM_FAILURE_THRESHOLD']:  # In this case something else has gone wrong, so we panic.
             sysItems['Watchdog']['ON'] = 0  # Basically this will crash all the electronics and the software.
             out = 0
-            sysData[M]['present'] = 0
+            sys_state.set_data_value(M, 'present', 0)
             critical_msg = 'Failed to communicate to %s %d times on %s (%s). Disabling hardware and software!' \
-                           % (device, application.config['DEVICE_COMM_FAILURE_THRESHOLD'], M, sysData[M]['DeviceID'])
+                           % (device, application.config['DEVICE_COMM_FAILURE_THRESHOLD'], M, sys_state.get_data_value(M, 'DeviceID', ''))
             logger_ctx.critical(critical_msg)
             tries = -1
             os._exit(4)
@@ -1722,18 +1776,18 @@ def CalibrateOD(M, item, value, value2):
     if M == "0":
         M = sysItems['UIDevice']
 
-    device = sysData[M]['OD']['device']
+    device = sys_state.get_item_value(M, 'OD', 'device', '')
     if device == 'LASER650':
-        a = sysData[M]['OD0']['LASERa']  # Retrieve the calibration factors for OD.
-        b = sysData[M]['OD0']['LASERb']
+        a = sys_state.get_item_value(M, 'OD0', 'LASERa', 0.0)  # Retrieve the calibration factors for OD.
+        b = sys_state.get_item_value(M, 'OD0', 'LASERb', 0.0)
         if ODActual < 0:
             ODActual = 0
             logger_ctx.warning("You put a negative OD into calibration! Setting it to 0")
 
         raw = ((ODActual / a + (b / (2 * a)) ** 2) ** 0.5) - (b / (2 * a))  # This is performing the inverse function of the quadratic OD calibration.
         OD0 = (10.0 ** raw) * ODRaw
-        if OD0 < sysData[M][item]['min']:
-            OD0 = sysData[M][item]['min']
+        if OD0 < sys_state.get_item_value(M, item, 'min', 0.0):
+            OD0 = sys_state.get_item_value(M, item, 'min', 0.0)
             logger_ctx.warning('OD calibration value seems too low?!')
 
         if OD0 > sys_state.get_item_value(M, item, 'max', float('inf')):
@@ -1741,10 +1795,11 @@ def CalibrateOD(M, item, value, value2):
             logger_ctx.warning('OD calibration value seems too high?!')
 
         sys_state.set_item_value(M, item, 'target', OD0)
-        info_msg = f"Calibrated OD on {M} ({sysData[M]['DeviceID']})"
+        device_id = sys_state.get_data_value(M, 'DeviceID', '')
+        info_msg = f"Calibrated OD on {M} ({device_id})"
         logger_ctx.info(info_msg)
     elif device == 'LEDF':
-        a = sysData[M]['OD0']['LEDFa']  # Retrieve the calibration factors for OD.
+        a = sys_state.get_item_value(M, 'OD0', 'LEDFa', 0.0)  # Retrieve the calibration factors for OD.
 
         if ODActual < 0:
             ODActual = 0
@@ -1763,18 +1818,19 @@ def CalibrateOD(M, item, value, value2):
         OD0 = ODRaw / ODActual
         logger_ctx.debug('OD0 calculation (LEDF) result: %s', OD0)
 
-        if OD0 < sysData[M][item]['min']:
-            OD0 = sys_state.get_item_value(M, item, 'min')
+        if OD0 < sys_state.get_item_value(M, item, 'min', 0.0):
+            OD0 = sys_state.get_item_value(M, item, 'min', 0.0)
             logger_ctx.warning('OD calibration value seems too low?!')
         if OD0 > sys_state.get_item_value(M, item, 'max', float('inf')):
             OD0 = sys_state.get_item_value(M, item, 'max')
             logger_ctx.warning('OD calibration value seems too high?!')
 
         sys_state.set_item_value(M, item, 'target', OD0)
-        info_msg = f"Calibrated OD on {M} ({sysData[M]['DeviceID']})"
+        device_id = sys_state.get_data_value(M, 'DeviceID', '')
+        info_msg = f"Calibrated OD on {M} ({device_id})"
         logger_ctx.info(info_msg)
     elif device == 'LEDA':
-        a = sysData[M]['OD0']['LEDAa']  # Retrieve the calibration factors for OD.
+        a = sys_state.get_item_value(M, 'OD0', 'LEDAa', 0.0)  # Retrieve the calibration factors for OD.
 
         if ODActual < 0:
             ODActual = 0
@@ -1793,15 +1849,16 @@ def CalibrateOD(M, item, value, value2):
         OD0 = ODRaw / ODActual
         logger_ctx.debug('OD0 calculation (LEDA) result: %s', OD0)
 
-        if OD0 < sysData[M][item]['min']:
-            OD0 = sys_state.get_item_value(M, item, 'min')
+        if OD0 < sys_state.get_item_value(M, item, 'min', 0.0):
+            OD0 = sys_state.get_item_value(M, item, 'min', 0.0)
             logger_ctx.warning('OD calibration value seems too low?!')
         if OD0 > sys_state.get_item_value(M, item, 'max', float('inf')):
             OD0 = sys_state.get_item_value(M, item, 'max')
             logger_ctx.warning('OD calibration value seems too high?!')
 
         sys_state.set_item_value(M, item, 'target', OD0)
-        info_msg = f"Calibrated OD on {M} ({sysData[M]['DeviceID']})"
+        device_id = sys_state.get_data_value(M, 'DeviceID', '')
+        info_msg = f"Calibrated OD on {M} ({device_id})"
         logger_ctx.info(info_msg)
 
     return '', 204
@@ -1824,9 +1881,10 @@ def SampleOD(M, value):
     od_value = str(OD0Actual)
     od_value = od_value.replace('.', '_')
     logger_ctx.info('Current actual OD: %s', od_value)
-    filename = f'OD_Sampels_{M}_{od_value}_{sysData[M]["DeviceID"]}.csv'
+    device_id = sys_state.get_data_value(M, 'DeviceID', '')
+    filename = f'OD_Sampels_{M}_{od_value}_{device_id}.csv'
     number_of_measurements = 200
-    logger_ctx.info(f'collecting {number_of_measurements} OD measurements to characterize {M} ({sysData[M]["DeviceID"]})')
+    logger_ctx.info(f'collecting {number_of_measurements} OD measurements to characterize {M} ({device_id})')
     th = Thread(target=collect_od_samples, args=(filename, number_of_measurements, M))
     th.setDaemon(True)
     th.start()
@@ -1860,25 +1918,28 @@ def MeasureOD(M):
     M = str(M)
     if M == "0":
         M = sysItems['UIDevice']
-    device = sysData[M]['OD']['device']
+    device = sys_state.get_item_value(M, 'OD', 'device', '')
     if device == 'LASER650':
         out = GetTransmission(M, 'LASER650', ['CLEAR'], 1, 255)
-        sysData[M]['OD0']['raw'] = float(out[0])
+        sys_state.set_item_value(M, 'OD0', 'raw', float(out[0]))
 
-        a = sysData[M]['OD0']['LASERa']  # Retrieve the calibration factors for OD.
-        b = sysData[M]['OD0']['LASERb']
-        if abs(sysData[M]['OD0']['raw']) > 0.001: # avoid devision by 0
-            raw = math.log10(sysData[M]['OD0']['target'] / sysData[M]['OD0']['raw'])
-            sysData[M]['OD']['current'] = raw * b + raw * raw * a
+        a = sys_state.get_item_value(M, 'OD0', 'LASERa', 0.0)  # Retrieve the calibration factors for OD.
+        b = sys_state.get_item_value(M, 'OD0', 'LASERb', 0.0)
+        od0_raw = sys_state.get_item_value(M, 'OD0', 'raw', 0.0)
+        od0_target = sys_state.get_item_value(M, 'OD0', 'target', 0.0)
+        if abs(od0_raw) > 0.001: # avoid devision by 0
+            raw = math.log10(od0_target / od0_raw)
+            sys_state.set_item_value(M, 'OD', 'current', raw * b + raw * raw * a)
         else:
-            sysData[M]['OD']['current'] = 0
-            warn_msg = f' OD Measurement close to 0 on {M} ({sysData[M]["DeviceID"]}) device: {str(device)}'
+            sys_state.set_item_value(M, 'OD', 'current', 0)
+            device_id = sys_state.get_data_value(M, 'DeviceID', '')
+            warn_msg = f' OD Measurement close to 0 on {M} ({device_id}) device: {str(device)}'
             logger_ctx.warning(warn_msg)
     elif (device == 'LEDF'):
         out = GetTransmission(M, 'LEDF', ['CLEAR'], 7, 255)
 
-        sysData[M]['OD0']['raw'] = out[0]
-        a = sysData[M]['OD0']['LEDFa']  # Retrieve the calibration factors for OD.
+        sys_state.set_item_value(M, 'OD0', 'raw', out[0])
+        a = sys_state.get_item_value(M, 'OD0', 'LEDFa', 0.0)  # Retrieve the calibration factors for OD.
         try:
             if M == 'M0':
                 CF = 1299.0
@@ -1889,18 +1950,19 @@ def MeasureOD(M):
             elif M == 'M3':
                 CF = 1494.0
             # raw=out[0]/CF - sysData[M]['OD0']['target']/CF
-            raw = out[0] / sysData[M]['OD0']['target']
-            sysData[M]['OD']['current'] = raw
+            raw = out[0] / sys_state.get_item_value(M, 'OD0', 'target', 0.0)
+            sys_state.set_item_value(M, 'OD', 'current', raw)
         except Exception as e:
-            sysData[M]['OD']['current'] = 0;
-            warn_msg = f' OD Measurement exception on {M} ({sysData[M]["DeviceID"]}) device: {str(device)}, error: {e}'
+            sys_state.set_item_value(M, 'OD', 'current', 0)
+            device_id = sys_state.get_data_value(M, 'DeviceID', '')
+            warn_msg = f' OD Measurement exception on {M} ({device_id}) device: {str(device)}, error: {e}'
             logger_ctx.warning(warn_msg, exc_info=True)
 
     elif device == 'LEDA':
         out = GetTransmission(M, 'LEDA', ['CLEAR'], 7, 255)
 
-        sysData[M]['OD0']['raw'] = out[0]
-        a = sysData[M]['OD0']['LEDAa']  # Retrieve the calibration factors for OD.
+        sys_state.set_item_value(M, 'OD0', 'raw', out[0])
+        a = sys_state.get_item_value(M, 'OD0', 'LEDAa', 0.0)  # Retrieve the calibration factors for OD.
         try:
             if M == 'M0':
                 CF = 422.0
@@ -1911,12 +1973,13 @@ def MeasureOD(M):
             elif M == 'M3':
                 CF = 522.0
             # raw=out[0]/CF - sysData[M]['OD0']['target']/CF
-            raw = out[0] / sysData[M]['OD0']['target']
+            raw = out[0] / sys_state.get_item_value(M, 'OD0', 'target', 0.0)
             # sysData[M]['OD']['current']=raw*a
-            sysData[M]['OD']['current'] = raw
+            sys_state.set_item_value(M, 'OD', 'current', raw)
         except Exception as e:
-            sysData[M]['OD']['current'] = 0;
-            warn_msg = f' OD Measurement exception on {M} ({sysData[M]["DeviceID"]}) device: {str(device)}, error: {e}'
+            sys_state.set_item_value(M, 'OD', 'current', 0)
+            device_id = sys_state.get_data_value(M, 'DeviceID', '')
+            warn_msg = f' OD Measurement exception on {M} ({device_id}) device: {str(device)}, error: {e}'
             logger_ctx.warning(warn_msg, exc_info=True)
 
     return '', 204
@@ -1930,20 +1993,31 @@ def MeasureFP(M):
     if M == "0":
         M = sysItems['UIDevice']
     for FP in ['FP1', 'FP2', 'FP3']:
-        if sysData[M][FP]['ON'] == 1:
-            Gain = int(sysData[M][FP]['Gain'][1:])
-            out = GetTransmission(M, sysData[M][FP]['LED'], [sysData[M][FP]['BaseBand'], sysData[M][FP]['Emit1Band'], sysData[M][FP]['Emit2Band']], Gain, 255)
-            sysData[M][FP]['Base'] = float(out[0])
-            if sysData[M][FP]['Base'] > 0:
-                sysData[M][FP]['Emit1'] = float(out[1]) / sysData[M][FP]['Base']
-                sysData[M][FP]['Emit2'] = float(out[2]) / sysData[M][FP]['Base']
+        if sys_state.get_item_value(M, FP, 'ON', 0) == 1:
+            Gain = int(sys_state.get_item_value(M, FP, 'Gain', 'G1')[1:])
+            out = GetTransmission(
+                M,
+                sys_state.get_item_value(M, FP, 'LED', ''),
+                [
+                    sys_state.get_item_value(M, FP, 'BaseBand', ''),
+                    sys_state.get_item_value(M, FP, 'Emit1Band', ''),
+                    sys_state.get_item_value(M, FP, 'Emit2Band', ''),
+                ],
+                Gain,
+                255,
+            )
+            sys_state.set_item_value(M, FP, 'Base', float(out[0]))
+            base_value = sys_state.get_item_value(M, FP, 'Base', 0.0)
+            if base_value > 0:
+                sys_state.set_item_value(M, FP, 'Emit1', float(out[1]) / base_value)
+                sys_state.set_item_value(M, FP, 'Emit2', float(out[2]) / base_value)
             else:  # This might happen if you try to measure in CLEAR whilst also having CLEAR as baseband!
-                sysData[M][FP]['Emit1'] = float(out[1])
-                sysData[M][FP]['Emit2'] = float(out[2])
+                sys_state.set_item_value(M, FP, 'Emit1', float(out[1]))
+                sys_state.set_item_value(M, FP, 'Emit2', float(out[2]))
 
             # saving the unnormalized emissions
-            sysData[M][FP]['Emit1_raw'] = float(out[1])
-            sysData[M][FP]['Emit2_raw'] = float(out[2])
+            sys_state.set_item_value(M, FP, 'Emit1_raw', float(out[1]))
+            sys_state.set_item_value(M, FP, 'Emit2_raw', float(out[2]))
 
     return '', 204
 
@@ -1967,11 +2041,11 @@ def MeasureTemp(M, which):
         getData = I2CCom(M, which, 1, 0, 0x07, 0, 1)
         temperature = (getData * 0.02) - 273.15
 
-    if sysData[M]['present'] == 0:
+    if sys_state.get_data(M).get('present', 0) == 0:
         temperature = 0.0
     if temperature > 100.0:  # It seems sometimes the IR thermometer returns a value of 1000 due to an error. This prevents that.
-        temperature = sysData[M][which]['current']
-    sysData[M][which]['current'] = temperature
+        temperature = sys_state.get_item_value(M, which, 'current', 0.0)
+    sys_state.set_item_value(M, which, 'current', temperature)
     return '', 204
 
 
@@ -1980,13 +2054,14 @@ def setPWM(M, device, channels, fraction, ConsecutiveFails):
     global sysItems
     global sysDevices
 
+    device_id = sys_state.get_data(M).get('DeviceID', '')
     logger_ctx.debug('PWM command on %s (%s) device: %s channels: %s fractions: %s ConsecutiveFails: %d' %
-                             (M, sysData[M]['DeviceID'], device, channels, fraction, ConsecutiveFails))
-    if sysDevices[M][device]['startup'] == 0:  # The following boots up the respective PWM device to the correct frequency. Potentially there is a bug here; if the device loses power after this code is run for the first time it may revert to default PWM frequency.
+                             (M, device_id, device, channels, fraction, ConsecutiveFails))
+    if sys_state.get_device_item_value(M, device, 'startup', 0) == 0:  # The following boots up the respective PWM device to the correct frequency. Potentially there is a bug here; if the device loses power after this code is run for the first time it may revert to default PWM frequency.
         I2CCom(M, device, 0, 8, 0x00, 0x10, 0)  # Turns off device. Also disables all-call functionality at bit 0 so it won't respond to address 0x70
         I2CCom(M, device, 0, 8, 0x04, 0xe6, 0)  # Sets SubADDR3 of the PWM chips to be 0x73 instead of 0x74 to avoid any potential collision with the multiplexer @ 0x74
-        I2CCom(M, device, 0, 8, 0xfe, sysDevices[M][device]['frequency'], 0)  # Sets frequency of PWM oscillator.
-        sysDevices[M][device]['startup'] = 1
+        I2CCom(M, device, 0, 8, 0xfe, sys_state.get_device_item_value(M, device, 'frequency', 0), 0)  # Sets frequency of PWM oscillator.
+        sys_state.set_device_item_value(M, device, 'startup', 1)
 
     I2CCom(M, device, 0, 8, 0x00, 0x00, 0)  # Turns device on
 
@@ -2042,42 +2117,43 @@ def csvData(M):
                   'custom_prog_param1', 'custom_prog_param2', 'custom_prog_param3', 'custom_prog_status',
                   'zigzag_target', 'growth_rate', 'od_raw']
 
-    row = [sysData[M]['time']['record'][-1],
-           sysData[M]['OD']['record'][-1],
-           sysData[M]['OD']['targetrecord'][-1],
-           sysData[M]['OD0']['target'],
-           sysData[M]['Thermostat']['record'][-1],
+    row = [sys_state.get_item_value(M, 'time', 'record', [0])[-1],
+           sys_state.get_item_value(M, 'OD', 'record', [0])[-1],
+           sys_state.get_item_value(M, 'OD', 'targetrecord', [0])[-1],
+           sys_state.get_item_value(M, 'OD0', 'target', 0.0),
+           sys_state.get_item_value(M, 'Thermostat', 'record', [0])[-1],
            sys_state.get_effective_intensity(M, 'Heat'),
-           sysData[M]['ThermometerInternal']['record'][-1],
-           sysData[M]['ThermometerExternal']['record'][-1],
-           sysData[M]['ThermometerIR']['record'][-1],
-           sysData[M]['Light']['record'][-1],
-           sysData[M]['Pump1']['record'][-1],
-           sysData[M]['Pump2']['record'][-1],
-           sysData[M]['Pump3']['record'][-1],
-           sysData[M]['Pump4']['record'][-1],
-           sysData[M]['Volume']['target'],
+           sys_state.get_item_value(M, 'ThermometerInternal', 'record', [0])[-1],
+           sys_state.get_item_value(M, 'ThermometerExternal', 'record', [0])[-1],
+           sys_state.get_item_value(M, 'ThermometerIR', 'record', [0])[-1],
+           sys_state.get_item_value(M, 'Light', 'record', [0])[-1],
+           sys_state.get_item_value(M, 'Pump1', 'record', [0])[-1],
+           sys_state.get_item_value(M, 'Pump2', 'record', [0])[-1],
+           sys_state.get_item_value(M, 'Pump3', 'record', [0])[-1],
+           sys_state.get_item_value(M, 'Pump4', 'record', [0])[-1],
+           sys_state.get_item_value(M, 'Volume', 'target', 0.0),
            sys_state.get_effective_intensity(M, 'Stir'), ]
     for LED in LED_OUTPUTS_WITH_LASER:
-        row = row + [sysData[M][LED]['target']]
+        row = row + [sys_state.get_item_value(M, LED, 'target', 0.0)]
     row = row + [sys_state.get_effective_intensity(M, 'UV')]
     for FP in ['FP1', 'FP2', 'FP3']:
-        if sysData[M][FP]['ON'] == 1:
-            row = row + [sysData[M][FP]['Base']]
-            row = row + [sysData[M][FP]['Emit1']]
-            row = row + [sysData[M][FP]['Emit2']]
-            row = row + [sysData[M][FP]['Emit1_raw']]
-            row = row + [sysData[M][FP]['Emit2_raw']]
+        if sys_state.get_item_value(M, FP, 'ON', 0) == 1:
+            row = row + [sys_state.get_item_value(M, FP, 'Base', 0.0)]
+            row = row + [sys_state.get_item_value(M, FP, 'Emit1', 0.0)]
+            row = row + [sys_state.get_item_value(M, FP, 'Emit2', 0.0)]
+            row = row + [sys_state.get_item_value(M, FP, 'Emit1_raw', 0.0)]
+            row = row + [sys_state.get_item_value(M, FP, 'Emit2_raw', 0.0)]
         else:
             row = row + ([0.0, 0.0, 0.0, 0.0, 0.0])
 
-    row = row + [sysData[M]['Custom']['param1'] * float(sysData[M]['Custom']['ON'])]
-    row = row + [sysData[M]['Custom']['param2'] * float(sysData[M]['Custom']['ON'])]
-    row = row + [sysData[M]['Custom']['param3'] * float(sysData[M]['Custom']['ON'])]
-    row = row + [sysData[M]['Custom']['Status'] * float(sysData[M]['Custom']['ON'])]
+    custom_on = float(sys_state.get_item_value(M, 'Custom', 'ON', 0))
+    row = row + [sys_state.get_item_value(M, 'Custom', 'param1', 0.0) * custom_on]
+    row = row + [sys_state.get_item_value(M, 'Custom', 'param2', 0.0) * custom_on]
+    row = row + [sys_state.get_item_value(M, 'Custom', 'param3', 0.0) * custom_on]
+    row = row + [sys_state.get_item_value(M, 'Custom', 'Status', 0.0) * custom_on]
     row = row + [sys_state.get_effective_intensity(M, 'Zigzag')]
-    row = row + [sysData[M]['GrowthRate']['current'] * sysData[M]['Zigzag']['ON']]
-    row = row + [sysData[M]['OD0']['raw']]
+    row = row + [sys_state.get_item_value(M, 'GrowthRate', 'current', 0.0) * sys_state.get_item_value(M, 'Zigzag', 'ON', 0)]
+    row = row + [sys_state.get_item_value(M, 'OD0', 'raw', 0.0)]
 
     # Following can be uncommented if you are recording ALL spectra for e.g. biofilm experiments
     # bands=['nm410' ,'nm440','nm470','nm510','nm550','nm583','nm620','nm670','CLEAR','NIR']
@@ -2090,7 +2166,7 @@ def csvData(M):
         raise ValueError('CSV_WRITER: mismatch between column num and header num')
 
     filename = '%s/%s_data.csv' \
-               % (application.config['DATA_DIR'], sysData[M]['Experiment']['experimentID'])
+               % (application.config['DATA_DIR'], sys_state.get_item_value(M, 'Experiment', 'experimentID', ''))
 
     lock.acquire()  # We are avoiding writing to a file at the same time as we do digital communications, since it might potentially cause the computer to lag and consequently data transfer to fail.
     if os.path.isfile(filename) is False:  # Only if we are starting a fresh file
@@ -2112,7 +2188,7 @@ def downsample(M):
     M = str(M)
 
     # We now generate a new time vector which is downsampled at half the rate of the previous one
-    time = np.asarray(sysData[M]['time']['record'])
+    time = np.asarray(sys_state.get_item_value(M, 'time', 'record', []))
     newlength = int(round(len(time) / 2, 2) - 1)
     tnew = np.linspace(time[0], time[-11], newlength)
     tnew = np.concatenate([tnew, time[-10:]])
@@ -2129,24 +2205,24 @@ def downsample(M):
             index[i] = idx
         i = i + 1
 
-    sysData[M]['time']['record'] = downsampleFunc(sysData[M]['time']['record'], index)
-    sysData[M]['OD']['record'] = downsampleFunc(sysData[M]['OD']['record'], index)
-    sysData[M]['OD']['targetrecord'] = downsampleFunc(sysData[M]['OD']['targetrecord'], index)
-    sysData[M]['Thermostat']['record'] = downsampleFunc(sysData[M]['Thermostat']['record'], index)
-    sysData[M]['Light']['record'] = downsampleFunc(sysData[M]['Light']['record'], index)
-    sysData[M]['ThermometerInternal']['record'] = downsampleFunc(sysData[M]['ThermometerInternal']['record'], index)
-    sysData[M]['ThermometerExternal']['record'] = downsampleFunc(sysData[M]['ThermometerExternal']['record'], index)
-    sysData[M]['ThermometerIR']['record'] = downsampleFunc(sysData[M]['ThermometerIR']['record'], index)
-    sysData[M]['Pump1']['record'] = downsampleFunc(sysData[M]['Pump1']['record'], index)
-    sysData[M]['Pump2']['record'] = downsampleFunc(sysData[M]['Pump2']['record'], index)
-    sysData[M]['Pump3']['record'] = downsampleFunc(sysData[M]['Pump3']['record'], index)
-    sysData[M]['Pump4']['record'] = downsampleFunc(sysData[M]['Pump4']['record'], index)
-    sysData[M]['GrowthRate']['record'] = downsampleFunc(sysData[M]['GrowthRate']['record'], index)
+    sys_state.set_item_value(M, 'time', 'record', downsampleFunc(sys_state.get_item_value(M, 'time', 'record', []), index))
+    sys_state.set_item_value(M, 'OD', 'record', downsampleFunc(sys_state.get_item_value(M, 'OD', 'record', []), index))
+    sys_state.set_item_value(M, 'OD', 'targetrecord', downsampleFunc(sys_state.get_item_value(M, 'OD', 'targetrecord', []), index))
+    sys_state.set_item_value(M, 'Thermostat', 'record', downsampleFunc(sys_state.get_item_value(M, 'Thermostat', 'record', []), index))
+    sys_state.set_item_value(M, 'Light', 'record', downsampleFunc(sys_state.get_item_value(M, 'Light', 'record', []), index))
+    sys_state.set_item_value(M, 'ThermometerInternal', 'record', downsampleFunc(sys_state.get_item_value(M, 'ThermometerInternal', 'record', []), index))
+    sys_state.set_item_value(M, 'ThermometerExternal', 'record', downsampleFunc(sys_state.get_item_value(M, 'ThermometerExternal', 'record', []), index))
+    sys_state.set_item_value(M, 'ThermometerIR', 'record', downsampleFunc(sys_state.get_item_value(M, 'ThermometerIR', 'record', []), index))
+    sys_state.set_item_value(M, 'Pump1', 'record', downsampleFunc(sys_state.get_item_value(M, 'Pump1', 'record', []), index))
+    sys_state.set_item_value(M, 'Pump2', 'record', downsampleFunc(sys_state.get_item_value(M, 'Pump2', 'record', []), index))
+    sys_state.set_item_value(M, 'Pump3', 'record', downsampleFunc(sys_state.get_item_value(M, 'Pump3', 'record', []), index))
+    sys_state.set_item_value(M, 'Pump4', 'record', downsampleFunc(sys_state.get_item_value(M, 'Pump4', 'record', []), index))
+    sys_state.set_item_value(M, 'GrowthRate', 'record', downsampleFunc(sys_state.get_item_value(M, 'GrowthRate', 'record', []), index))
 
     for FP in ['FP1', 'FP2', 'FP3']:
-        sysData[M][FP]['BaseRecord'] = downsampleFunc(sysData[M][FP]['BaseRecord'], index)
-        sysData[M][FP]['Emit1Record'] = downsampleFunc(sysData[M][FP]['Emit1Record'], index)
-        sysData[M][FP]['Emit2Record'] = downsampleFunc(sysData[M][FP]['Emit2Record'], index)
+        sys_state.set_item_value(M, FP, 'BaseRecord', downsampleFunc(sys_state.get_item_value(M, FP, 'BaseRecord', []), index))
+        sys_state.set_item_value(M, FP, 'Emit1Record', downsampleFunc(sys_state.get_item_value(M, FP, 'Emit1Record', []), index))
+        sys_state.set_item_value(M, FP, 'Emit2Record', downsampleFunc(sys_state.get_item_value(M, FP, 'Emit2Record', []), index))
 
 
 def downsampleFunc(datain, index):
@@ -2169,8 +2245,8 @@ def RegulateOD(M):
     global sysItems
     M = str(M)
 
-    if sysData[M]['Zigzag']['ON'] == 1:
-        TargetOD = sysData[M]['OD']['target']
+    if sys_state.get_item_value(M, 'Zigzag', 'ON', 0) == 1:
+        TargetOD = sys_state.get_item_value(M, 'OD', 'target', 0.0)
         Zigzag(M)  # Function that calculates new target pump rates, and sets pumps to desired rates.
 
     Pump1Current = abs(sys_state.get_item_value(M, 'Pump1', 'target', 0.0))
@@ -2188,16 +2264,19 @@ def RegulateOD(M):
 
     PercentPerMin = 4 * 60 / Volume  # Gain parameter to convert from pump rate to rate of OD reduction.
 
-    if sysData[M]['Experiment']['cycles'] < 3:
+    cycles = sys_state.get_item_value(M, 'Experiment', 'cycles', 0)
+    time_record = sys_state.get_item_value(M, 'time', 'record', [])
+    od_record = sys_state.get_item_value(M, 'OD', 'record', [])
+    if cycles < 3:
         Pump1 = 0  # In first few cycles we do precisely no pumping.
-    elif len(sysData[M]['time']['record']) < 2:
+    elif len(time_record) < 2:
         Pump1 = 0  # In first few cycles we do precisely no pumping.
         addTerminal(M, "Warning: Tried to calculate time elapsed with fewer than two " +
                     "timepoints recorded. If you see this message a lot, there may be " +
                     "a more serious problem.")
     else:
-        ODPast = sysData[M]['OD']['record'][-1]
-        timeElapsed = ((sysData[M]['time']['record'][-1]) - (sysData[M]['time']['record'][-2])) / 60.0  # Amount of time betwix measurements in minutes
+        ODPast = od_record[-1]
+        timeElapsed = (time_record[-1] - time_record[-2]) / 60.0  # Amount of time betwix measurements in minutes
         if ODNow > 0:
             try:
                 NewGrowth = math.log(ODTarget / ODNow) / timeElapsed
@@ -2240,22 +2319,24 @@ def RegulateOD(M):
     elif Pump1 < 0:
         Pump1 = 0.0
 
-    if sysData[M]['Chemostat']['ON'] == 1:
-        Pump1 = float(sysData[M]['Chemostat']['p1'])
+    chemostat_on = sys_state.get_item_value(M, 'Chemostat', 'ON', 0)
+    if chemostat_on == 1:
+        Pump1 = float(sys_state.get_item_value(M, 'Chemostat', 'p1', 0.0))
 
     # Set new Pump targets
     sys_state.set_item_value(M, 'Pump1', 'target', Pump1 * Pump1Direction)
     sys_state.set_item_value(M, 'Pump2', 'target', (Pump1 * 4 + 0.07) * Pump2Direction)
 
-    if sysData[M]['Experiment']['cycles'] % 5 == 1:  # Every so often we do a big output pump to make sure tubes are clear.
+    if cycles % 5 == 1:  # Every so often we do a big output pump to make sure tubes are clear.
         sys_state.set_item_value(M, 'Pump2', 'target', 0.25 * sys_state.get_item_value(M, 'Pump2', 'direction', 1.0))
 
-    if sysData[M]['Experiment']['cycles'] > 15:
+    if cycles > 15:
         # This section is to check if we have added any liquid recently, if not, then we don't run pump 2 since it won't
         # be needed.
+        pump1_record = sys_state.get_item_value(M, 'Pump1', 'record', [])
         pastpumping = abs(sys_state.get_item_value(M, 'Pump1', 'target', 0.0))
         for pv in range(-10, -1):
-            pastpumping = pastpumping + abs(sysData[M]['Pump1']['record'][pv])
+            pastpumping = pastpumping + abs(pump1_record[pv])
 
         if pastpumping == 0.0:
             sys_state.set_item_value(M, 'Pump2', 'target', 0.0)
@@ -2264,9 +2345,9 @@ def RegulateOD(M):
     SetOutputOn(M, 'Pump1', 1)
     SetOutputOn(M, 'Pump2', 1)
 
-    if sysData[M]['Zigzag']['ON'] == 1:  # If the zigzag growth estimation is running then we change OD setpoint appropriately.
+    if sys_state.get_item_value(M, 'Zigzag', 'ON', 0) == 1:  # If the zigzag growth estimation is running then we change OD setpoint appropriately.
         try:
-            sysData[M]['OD']['target'] = TargetOD
+            sys_state.set_item_value(M, 'OD', 'target', TargetOD)
         except Exception as e:
             logger_ctx.debug('Zigzag activation timing issue: %s', e)
             # Do nothing
@@ -2280,32 +2361,35 @@ def Zigzag(M):
     global sysData
     global sysItems
     M = str(M)
-    centre = sysData[M]['OD']['target']
-    current = sysData[M]['OD']['current']
-    zig = sysData[M]['Zigzag']['Zig']
-    iteration = sysData[M]['Experiment']['cycles']
+    centre = sys_state.get_item_value(M, 'OD', 'target', 0.0)
+    current = sys_state.get_item_value(M, 'OD', 'current', 0.0)
+    zig = sys_state.get_item_value(M, 'Zigzag', 'Zig', 0.0)
+    iteration = sys_state.get_item_value(M, 'Experiment', 'cycles', 0)
 
     try:
-        last = sysData[M]['OD']['record'][-1]
+        od_record = sys_state.get_item_value(M, 'OD', 'record', [])
+        last = od_record[-1]
     except:  # This will happen if you activate Zigzag in first control iteration!
         last = current
 
     if current < centre - zig and last < centre:
-        if sysData[M]['Zigzag']['target'] != 5.0:
-            sysData[M]['Zigzag']['SwitchPoint'] = iteration
-        sysData[M]['Zigzag']['target'] = 5.0  # an excessively high OD value.
+        if sys_state.get_item_value(M, 'Zigzag', 'target', 0.0) != 5.0:
+            sys_state.set_item_value(M, 'Zigzag', 'SwitchPoint', iteration)
+        sys_state.set_item_value(M, 'Zigzag', 'target', 5.0)  # an excessively high OD value.
     elif current > centre + zig and last > centre + zig:
-        sysData[M]['Zigzag']['target'] = centre - zig * 1.5
-        sysData[M]['Zigzag']['SwitchPoint'] = iteration
+        sys_state.set_item_value(M, 'Zigzag', 'target', centre - zig * 1.5)
+        sys_state.set_item_value(M, 'Zigzag', 'SwitchPoint', iteration)
 
-    sysData[M]['OD']['target'] = sysData[M]['Zigzag']['target']
+    sys_state.set_item_value(M, 'OD', 'target', sys_state.get_item_value(M, 'Zigzag', 'target', 0.0))
 
     # Subsequent section is for growth estimation.
 
-    TimeSinceSwitch = iteration - sysData[M]['Zigzag']['SwitchPoint']
-    if iteration > 6 and TimeSinceSwitch > 5 and current > 0 and last > 0 and sysData[M]['Zigzag']['target'] == 5.0:  # The reason we wait a few minutes after starting growth is that new media may still be introduced, it takes a while for the growth to get going.
+    TimeSinceSwitch = iteration - sys_state.get_item_value(M, 'Zigzag', 'SwitchPoint', 0)
+    zigzag_target = sys_state.get_item_value(M, 'Zigzag', 'target', 0.0)
+    if iteration > 6 and TimeSinceSwitch > 5 and current > 0 and last > 0 and zigzag_target == 5.0:  # The reason we wait a few minutes after starting growth is that new media may still be introduced, it takes a while for the growth to get going.
         dGrowthRate = (math.log(current) - math.log(last)) * 60.0  # Converting to units of 1/hour
-        sysData[M]['GrowthRate']['current'] = sysData[M]['GrowthRate']['current'] * 0.95 + dGrowthRate * 0.05  # We are essentially implementing an online growth rate estimator with learning rate 0.05
+        growth_rate = sys_state.get_item_value(M, 'GrowthRate', 'current', 0.0)
+        sys_state.set_item_value(M, 'GrowthRate', 'current', growth_rate * 0.95 + dGrowthRate * 0.05)  # We are essentially implementing an online growth rate estimator with learning rate 0.05
 
     return
 
@@ -2329,23 +2413,26 @@ def ExperimentStartStop(M, value):
 
     value = int(value)
     # Turning it on involves keeping current pump directions,
-    if value and (sysData[M]['Experiment']['ON'] == 0):
+    if value and (sys_state.get_item_value(M, 'Experiment', 'ON', 0) == 0):
 
-        sysData[M]['Experiment']['ON'] = 1
-        addTerminal(M, f'Experiment on {M} ({sysData[M]["DeviceID"]}) Started')
+        sys_state.set_item_value(M, 'Experiment', 'ON', 1)
+        device_id = sys_state.get_data_value(M, 'DeviceID', '')
+        addTerminal(M, f'Experiment on {M} ({device_id}) Started')
 
-        if sysData[M]['Experiment']['cycles'] == 0:
+        if sys_state.get_item_value(M, 'Experiment', 'cycles', 0) == 0:
             now = datetime.now()
             timeString = now.strftime("%Y-%m-%d %H:%M:%S")
-            sysData[M]['Experiment']['startTime'] = timeString
-            sysData[M]['Experiment']['experimentID'] = '%s_%s_%s_%s' % \
-                                                       (application.config['BEAGLEBONE_NAME'],
-                                                        sysData[M]['Experiment']['startTime'].replace(":", "_"),
-                                                        M,
-                                                        sysData[M]['DeviceID'])
-            logger_ctx.info('Experiment ID: %s has been assign to %s (%s)' %
-                                    (sysData[M]['Experiment']['experimentID'], M, sysData[M]['DeviceID']))
-            sysData[M]['Experiment']['startTimeRaw'] = now
+            sys_state.set_item_value(M, 'Experiment', 'startTime', timeString)
+            start_time = sys_state.get_item_value(M, 'Experiment', 'startTime', '')
+            device_id = sys_state.get_data_value(M, 'DeviceID', '')
+            exp_id = '%s_%s_%s_%s' % \
+                     (application.config['BEAGLEBONE_NAME'],
+                      start_time.replace(":", "_"),
+                      M,
+                      device_id)
+            sys_state.set_item_value(M, 'Experiment', 'experimentID', exp_id)
+            logger_ctx.info(f'Experiment ID: {exp_id} has been assign to {M} ({device_id})')
+            sys_state.set_item_value(M, 'Experiment', 'startTimeRaw', now)
 
         sys_state.set_item_value(M, 'Pump1', 'direction', 1.0)  # Sets pumps to go forward.
         sys_state.set_item_value(M, 'Pump2', 'direction', 1.0)
@@ -2353,14 +2440,16 @@ def ExperimentStartStop(M, value):
         turnEverythingOff(M)
 
         SetOutputOn(M, 'Thermostat', 1)
-        sysDevices[M]['Experiment'] = Thread(target=runExperiment, args=(M, 'placeholder'))
-        sysDevices[M]['Experiment'].setDaemon(True)
-        sysDevices[M]['Experiment'].start();
+        experiment_thread = Thread(target=runExperiment, args=(M, 'placeholder'))
+        experiment_thread.setDaemon(True)
+        sys_state.set_device_item_value(M, 'Experiment', 'thread', experiment_thread)
+        experiment_thread.start();
 
     else:
-        sysData[M]['Experiment']['ON'] = 0
-        sysData[M]['OD']['ON'] = 0
-        addTerminal(M, f'Experiment on {M} ({sysData[M]["DeviceID"]}) Stopping at end of cycle')
+        sys_state.set_item_value(M, 'Experiment', 'ON', 0)
+        sys_state.set_item_value(M, 'OD', 'ON', 0)
+        device_id = sys_state.get_data_value(M, 'DeviceID', '')
+        addTerminal(M, f'Experiment on {M} ({device_id}) Stopping at end of cycle')
         SetOutputOn(M, 'Pump1', 0)
         SetOutputOn(M, 'Pump2', 0)
         SetOutputOn(M, 'Stir', 0)
@@ -2377,46 +2466,47 @@ def runExperiment(M, placeholder):
     global sysItems
     global sysDevices
 
-    sysData[M]['Experiment']['threadCount'] = (sysData[M]['Experiment']['threadCount'] + 1) % 100
-    currentThread = sysData[M]['Experiment']['threadCount']
+    thread_count = (sys_state.get_item_value(M, 'Experiment', 'threadCount', 0) + 1) % 100
+    sys_state.set_item_value(M, 'Experiment', 'threadCount', thread_count)
+    currentThread = thread_count
 
     # Get time running in seconds
     now = datetime.now()
-    elapsedTime = now - sysData[M]['Experiment']['startTimeRaw']
+    elapsedTime = now - sys_state.get_item_value(M, 'Experiment', 'startTimeRaw', now)
     elapsedTimeSeconds = round(elapsedTime.total_seconds(), 2)
-    sysData[M]['Experiment']['cycles'] = sysData[M]['Experiment']['cycles'] + 1
-    addTerminal(M, f'Cycle {sysData[M]["Experiment"]["cycles"]} on {M} ({sysData[M]["DeviceID"]}) Started')
+    cycles = sys_state.get_item_value(M, 'Experiment', 'cycles', 0) + 1
+    sys_state.set_item_value(M, 'Experiment', 'cycles', cycles)
+    device_id = sys_state.get_data_value(M, 'DeviceID', '')
+    addTerminal(M, f'Cycle {cycles} on {M} ({device_id}) Started')
     CycleTime = sys_state.get_item_value(M, 'Experiment', 'cycleTime', 0.0)
 
     SetOutputOn(M, 'Stir', 0)  # Turning stirring off
     time.sleep(5.0)  # Wait for liquid to settle.
-    if sysData[M]['Experiment']['ON'] == 0:
+    if sys_state.get_item_value(M, 'Experiment', 'ON', 0) == 0:
         turnEverythingOff(M)
-        sysData[M]['Experiment']['cycles'] = sysData[M]['Experiment']['cycles'] - 1  # Cycle didn't finish, don't count it.
-        addTerminal(M, f'Experiment on {M} ({sysData[M]["DeviceID"]}) Stopped')
+        sys_state.set_item_value(M, 'Experiment', 'cycles', cycles - 1)  # Cycle didn't finish, don't count it.
+        addTerminal(M, f'Experiment on {M} ({device_id}) Stopped')
         return
 
-    sysData[M]['OD']['Measuring'] = 1  # Begin measuring - this flag is just to indicate that a measurement is currently being taken.
+    sys_state.set_item_value(M, 'OD', 'Measuring', 1)  # Begin measuring - this flag is just to indicate that a measurement is currently being taken.
 
     # We now measure OD N times and take the average to reduce noise when in auto mode!
     ODV = 0.0
     for _ in range(0, application.config['NUMBER_OF_OD_MEASUREMENTS']):
         MeasureOD(M)
-        ODV = ODV + sysData[M]['OD']['current']
+        ODV = ODV + sys_state.get_item_value(M, 'OD', 'current', 0.0)
         time.sleep(0.25)
-    sysData[M]['OD']['current'] = ODV / float(application.config['NUMBER_OF_OD_MEASUREMENTS'])
-    logger_ctx.info('raw OD was measured at %g (averaged from %d) on %s (%s)'
-                            % (sysData[M]['OD']['current'], application.config['NUMBER_OF_OD_MEASUREMENTS'],
-                               M, sysData[M]['DeviceID']))
+    sys_state.set_item_value(M, 'OD', 'current', ODV / float(application.config['NUMBER_OF_OD_MEASUREMENTS']))
+    logger_ctx.info(f'raw OD was measured at {sys_state.get_item_value(M, "OD", "current", 0.0):g} (averaged from {application.config["NUMBER_OF_OD_MEASUREMENTS"]}) on {M} ({device_id})')
 
     MeasureTemp(M, 'Internal')  # Measuring all temperatures
     MeasureTemp(M, 'External')
     MeasureTemp(M, 'IR')
     MeasureFP(M)  # And now fluorescent protein concentrations.
 
-    if sysData[M]['Experiment']['ON'] == 0:  # We do another check post-measurement to see whether we need to end the experiment.
+    if sys_state.get_item_value(M, 'Experiment', 'ON', 0) == 0:  # We do another check post-measurement to see whether we need to end the experiment.
         turnEverythingOff(M)
-        sysData[M]['Experiment']['cycles'] = sysData[M]['Experiment']['cycles'] - 1  # Cycle didn't finish, don't count it.
+        sys_state.set_item_value(M, 'Experiment', 'cycles', cycles - 1)  # Cycle didn't finish, don't count it.
         addTerminal(M, 'Experiment Stopped')
         return
     # Temporary Biofilm Section - the below makes the device all spectral data for all LEDs each cycle.
@@ -2433,13 +2523,13 @@ def runExperiment(M, placeholder):
     #     for band in bands:
     #         sysData[M]['biofilm'][item][band]=int(sysData[M]['AS7341']['spectrum'][band])
 
-    sysData[M]['OD']['Measuring'] = 0
-    if sysData[M]['OD']['ON'] == 1:
+    sys_state.set_item_value(M, 'OD', 'Measuring', 0)
+    if sys_state.get_item_value(M, 'OD', 'ON', 0) == 1:
         RegulateOD(M)  # Function that calculates new target pump rates, and sets pumps to desired rates.
 
     LightActuation(M, 1)
 
-    if sysData[M]['Custom']['ON'] == 1:  # Check if we have enabled custom programs
+    if sys_state.get_item_value(M, 'Custom', 'ON', 0) == 1:  # Check if we have enabled custom programs
         CustomThread = Thread(target=CustomProgram, args=(M,))  # We run this in a thread in case we are doing something slow, we don't want to hang up the main l00p. The comma after M is to cast the args as a tuple to prevent it iterating over the thread M
         CustomThread.setDaemon(True)
         CustomThread.start();
@@ -2449,57 +2539,62 @@ def runExperiment(M, placeholder):
 
     SetOutputOn(M, 'Stir', 1)  # Start stirring again.
 
-    if sysData[M]['Experiment']['cycles'] % 10 == 9:  # Don't want terminal getting unruly, so clear it each 10 rotations.
+    if sys_state.get_item_value(M, 'Experiment', 'cycles', 0) % 10 == 9:  # Don't want terminal getting unruly, so clear it each 10 rotations.
         clearTerminal(M)
 
     # Below stores all the results for plotting later
-    sysData[M]['time']['record'].append(elapsedTimeSeconds)
-    sysData[M]['OD']['record'].append(sysData[M]['OD']['current'])
-    sysData[M]['OD']['targetrecord'].append(sys_state.get_effective_intensity(M, 'OD'))
-    sysData[M]['Thermostat']['record'].append(sys_state.get_effective_intensity(M, 'Thermostat'))
-    sysData[M]['Light']['record'].append(float(sysData[M]['Light']['ON']))
-    sysData[M]['ThermometerInternal']['record'].append(sysData[M]['ThermometerInternal']['current'])
-    sysData[M]['ThermometerExternal']['record'].append(sysData[M]['ThermometerExternal']['current'])
-    sysData[M]['ThermometerIR']['record'].append(sysData[M]['ThermometerIR']['current'])
-    sysData[M]['Pump1']['record'].append(sys_state.get_effective_intensity(M, 'Pump1'))
-    sysData[M]['Pump2']['record'].append(sys_state.get_effective_intensity(M, 'Pump2'))
-    sysData[M]['Pump3']['record'].append(sys_state.get_effective_intensity(M, 'Pump3'))
-    sysData[M]['Pump4']['record'].append(sys_state.get_effective_intensity(M, 'Pump4'))
-    sysData[M]['GrowthRate']['record'].append(sysData[M]['GrowthRate']['current'] * float(sysData[M]['Zigzag']['ON']))
+    sys_state.get_item_data(M, 'time')['record'].append(elapsedTimeSeconds)
+    sys_state.get_item_data(M, 'OD')['record'].append(sys_state.get_item_value(M, 'OD', 'current', 0.0))
+    sys_state.get_item_data(M, 'OD')['targetrecord'].append(sys_state.get_effective_intensity(M, 'OD'))
+    sys_state.get_item_data(M, 'Thermostat')['record'].append(sys_state.get_effective_intensity(M, 'Thermostat'))
+    sys_state.get_item_data(M, 'Light')['record'].append(float(sys_state.get_item_value(M, 'Light', 'ON', 0)))
+    sys_state.get_item_data(M, 'ThermometerInternal')['record'].append(sys_state.get_item_value(M, 'ThermometerInternal', 'current', 0.0))
+    sys_state.get_item_data(M, 'ThermometerExternal')['record'].append(sys_state.get_item_value(M, 'ThermometerExternal', 'current', 0.0))
+    sys_state.get_item_data(M, 'ThermometerIR')['record'].append(sys_state.get_item_value(M, 'ThermometerIR', 'current', 0.0))
+    sys_state.get_item_data(M, 'Pump1')['record'].append(sys_state.get_effective_intensity(M, 'Pump1'))
+    sys_state.get_item_data(M, 'Pump2')['record'].append(sys_state.get_effective_intensity(M, 'Pump2'))
+    sys_state.get_item_data(M, 'Pump3')['record'].append(sys_state.get_effective_intensity(M, 'Pump3'))
+    sys_state.get_item_data(M, 'Pump4')['record'].append(sys_state.get_effective_intensity(M, 'Pump4'))
+    sys_state.get_item_data(M, 'GrowthRate')['record'].append(
+        sys_state.get_item_value(M, 'GrowthRate', 'current', 0.0)
+        * float(sys_state.get_item_value(M, 'Zigzag', 'ON', 0))
+    )
     for FP in ['FP1', 'FP2', 'FP3']:
-        if sysData[M][FP]['ON'] == 1:
-            sysData[M][FP]['BaseRecord'].append(sysData[M][FP]['Base'])
-            sysData[M][FP]['Emit1Record'].append(sysData[M][FP]['Emit1'])
-            if sysData[M][FP]['Emit2Band'] != "OFF":
-                sysData[M][FP]['Emit2Record'].append(sysData[M][FP]['Emit2'])
+        if sys_state.get_item_value(M, FP, 'ON', 0) == 1:
+            sys_state.get_item_data(M, FP)['BaseRecord'].append(sys_state.get_item_value(M, FP, 'Base', 0.0))
+            sys_state.get_item_data(M, FP)['Emit1Record'].append(sys_state.get_item_value(M, FP, 'Emit1', 0.0))
+            if sys_state.get_item_value(M, FP, 'Emit2Band', 'OFF') != "OFF":
+                sys_state.get_item_data(M, FP)['Emit2Record'].append(sys_state.get_item_value(M, FP, 'Emit2', 0.0))
             else:
-                sysData[M][FP]['Emit2Record'].append(0.0)
+                sys_state.get_item_data(M, FP)['Emit2Record'].append(0.0)
         else:
-            sysData[M][FP]['BaseRecord'].append(0.0)
-            sysData[M][FP]['Emit1Record'].append(0.0)
-            sysData[M][FP]['Emit2Record'].append(0.0)
+            sys_state.get_item_data(M, FP)['BaseRecord'].append(0.0)
+            sys_state.get_item_data(M, FP)['Emit1Record'].append(0.0)
+            sys_state.get_item_data(M, FP)['Emit2Record'].append(0.0)
 
     # We downsample our records such that the size of the data vectors being plot in the web interface does not get
     # unruly.
-    if len(sysData[M]['time']['record']) > 200:
+    time_record = sys_state.get_item_value(M, 'time', 'record', [])
+    if len(time_record) > 200:
         downsample(M)
 
     # Writing Results to data files
     csvData(M)  # This command writes system data to a CSV file for future keeping.
     # And intermittently write the setup parameters to a data file.
-    if sysData[M]['Experiment']['cycles'] % 10 == 1:  # We only write whole configuration file each 10 cycles since it is not really that important.
-        TempStartTime = sysData[M]['Experiment']['startTimeRaw']
-        sysData[M]['Experiment']['startTimeRaw'] = 0  # We had to set this to zero during the write operation since the system does not like writing data in such a format.
+    if sys_state.get_item_value(M, 'Experiment', 'cycles', 0) % 10 == 1:  # We only write whole configuration file each 10 cycles since it is not really that important.
+        TempStartTime = sys_state.get_item_value(M, 'Experiment', 'startTimeRaw', 0)
+        sys_state.set_item_value(M, 'Experiment', 'startTimeRaw', 0)  # We had to set this to zero during the write operation since the system does not like writing data in such a format.
 
-        filename = f'{application.config["DATA_DIR"]}/{sysData[M]["Experiment"]["experimentID"]}.txt'
+        exp_id = sys_state.get_item_value(M, 'Experiment', 'experimentID', '')
+        filename = f'{application.config["DATA_DIR"]}/{exp_id}.txt'
         with open(filename, 'w') as f:
             simplejson.dump(sysData[M], f)
-        sysData[M]['Experiment']['startTimeRaw'] = TempStartTime
+        sys_state.set_item_value(M, 'Experiment', 'startTimeRaw', TempStartTime)
     # Written
 
-    if sysData[M]['Experiment']['ON'] == 0:
+    if sys_state.get_item_value(M, 'Experiment', 'ON', 0) == 0:
         turnEverythingOff(M)
-        addTerminal(M, f'Experiment on {M} ({sysData[M]["DeviceID"]}) Stopped')
+        addTerminal(M, f'Experiment on {M} ({device_id}) Stopped')
         return
 
     nowend = datetime.now()
@@ -2508,21 +2603,23 @@ def runExperiment(M, placeholder):
     sleeptime = CycleTime - elapsedTimeSeconds2
     if sleeptime < 0:
         sleeptime = 0
-        addTerminal(M, f'Experiment Cycle Time on {M} ({sysData[M]["DeviceID"]}) is too short!!!')
+        addTerminal(M, f'Experiment Cycle Time on {M} ({device_id}) is too short!!!')
 
     time.sleep(sleeptime)
     LightActuation(M, 0)  # Turn light actuation off if it is running.
-    addTerminal(M, f'Cycle {sysData[M]["Experiment"]["cycles"]} on {M} ({sysData[M]["DeviceID"]}) Complete')
+    addTerminal(M, f'Cycle {sys_state.get_item_value(M, "Experiment", "cycles", 0)} on {M} ({device_id}) Complete')
 
     # Now we run this function again if the automated experiment is still going.
-    if sysData[M]['Experiment']['ON'] and sysData[M]['Experiment']['threadCount'] == currentThread:
-        sysDevices[M]['Experiment'] = Thread(target=runExperiment, args=(M, 'placeholder'))
-        sysDevices[M]['Experiment'].setDaemon(True)
-        sysDevices[M]['Experiment'].start()
+    if (sys_state.get_item_value(M, 'Experiment', 'ON', 0)
+            and sys_state.get_item_value(M, 'Experiment', 'threadCount', 0) == currentThread):
+        experiment_thread = Thread(target=runExperiment, args=(M, 'placeholder'))
+        experiment_thread.setDaemon(True)
+        sys_state.set_device_item_value(M, 'Experiment', 'thread', experiment_thread)
+        experiment_thread.start()
 
     else:
         turnEverythingOff(M)
-        addTerminal(M, f'Experiment on {M} ({sysData[M]["DeviceID"]}) Stopped')
+        addTerminal(M, f'Experiment on {M} ({device_id}) Stopped')
 
 
 if __name__ == '__main__':
